@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQLite Workbench</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1>SQLite Workbench</h1>
+                <span class="connection-status" id="connectionStatus">●</span>
+            </div>
+            <div class="header-right">
+                <select id="databaseSelector" class="database-selector">
+                    <option value="">Select Database...</option>
+                </select>
+                <div class="database-info" id="databaseInfo"></div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- Left Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h2>Tables</h2>
+                    <button id="refreshTables" class="btn-icon" title="Refresh">↻</button>
+                </div>
+                <div id="tablesList" class="tables-list">
+                    <p class="empty-state">Select a database to view tables</p>
+                </div>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main class="content-area">
+                <div id="noSelection" class="empty-state-large">
+                    <p>Select a table to view details</p>
+                </div>
+
+                <div id="tableContent" class="table-content" style="display: none;">
+                    <!-- Tab Bar -->
+                    <div class="tab-bar">
+                        <button class="tab-btn active" data-tab="info">Table Info</button>
+                        <button class="tab-btn" data-tab="data">Table Data</button>
+                        <button class="tab-btn" data-tab="query">Query Browser</button>
+                    </div>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content">
+                        <!-- Table Info Tab -->
+                        <div id="tab-info" class="tab-pane active">
+                            <div class="info-section">
+                                <h3>Schema</h3>
+                                <div id="schemaContent"></div>
+                            </div>
+                            <div class="info-section">
+                                <h3>Indexes</h3>
+                                <div id="indexesContent"></div>
+                            </div>
+                            <div class="info-section">
+                                <h3>CREATE TABLE Statement</h3>
+                                <pre id="createTableStatement"></pre>
+                            </div>
+                        </div>
+
+                        <!-- Table Data Tab -->
+                        <div id="tab-data" class="tab-pane">
+                            <div class="data-controls">
+                                <div class="pagination-controls">
+                                    <label>Page Size:
+                                        <select id="pageSize">
+                                            <option value="10">10</option>
+                                            <option value="25" selected>25</option>
+                                            <option value="50">50</option>
+                                            <option value="100">100</option>
+                                        </select>
+                                    </label>
+                                    <div class="page-info" id="pageInfo"></div>
+                                    <div class="page-nav">
+                                        <button id="firstPage" class="btn-small">First</button>
+                                        <button id="prevPage" class="btn-small">Prev</button>
+                                        <button id="nextPage" class="btn-small">Next</button>
+                                        <button id="lastPage" class="btn-small">Last</button>
+                                    </div>
+                                </div>
+                                <button id="exportData" class="btn-primary">Export CSV</button>
+                            </div>
+                            <div class="table-container">
+                                <table id="dataTable" class="data-table">
+                                    <thead id="dataTableHead"></thead>
+                                    <tbody id="dataTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Query Browser Tab -->
+                        <div id="tab-query" class="tab-pane">
+                            <div class="query-editor-container">
+                                <textarea id="queryEditor" class="query-editor" placeholder="Enter SQL query..."></textarea>
+                                <div class="query-controls">
+                                    <button id="executeQuery" class="btn-primary">Execute (Ctrl+Enter)</button>
+                                    <span id="queryTime" class="query-time"></span>
+                                </div>
+                            </div>
+                            <div id="queryHistory" class="query-history">
+                                <h4>Query History</h4>
+                                <div id="historyList"></div>
+                            </div>
+                            <div id="queryResults" class="query-results">
+                                <div class="table-container">
+                                    <table id="queryTable" class="data-table">
+                                        <thead id="queryTableHead"></thead>
+                                        <tbody id="queryTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div id="queryError" class="error-message"></div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
+

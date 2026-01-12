@@ -1,0 +1,26 @@
+name: sqflite_dev
+description: A developer dependency package that provides a web-based SQLite workbench for Flutter apps during development. Works with both sqflite (mobile) and sqflite_common_ffi (desktop).
+version: 1.0.0
+homepage: https://github.com/yourusername/sqflite_dev
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  sqflite_common: ^2.4.0
+  shelf: ^1.4.0
+  shelf_cors_headers: ^0.1.5
+  shelf_static: ^1.1.0
+  path: ^1.9.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  # Web UI is embedded directly in the Dart code (no assets needed)
+
