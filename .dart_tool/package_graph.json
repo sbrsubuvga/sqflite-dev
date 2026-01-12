@@ -5,9 +5,8 @@
   "packages": [
     {
       "name": "sqflite_dev",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "dependencies": [
-        "flutter",
         "path",
         "shelf",
         "shelf_cors_headers",
@@ -74,18 +73,6 @@
         "meta",
         "path",
         "synchronized"
-      ]
-    },
-    {
-      "name": "flutter",
-      "version": "0.0.0",
-      "dependencies": [
-        "characters",
-        "collection",
-        "material_color_utilities",
-        "meta",
-        "sky_engine",
-        "vector_math"
       ]
     },
     {
@@ -173,6 +160,18 @@
       ]
     },
     {
+      "name": "flutter",
+      "version": "0.0.0",
+      "dependencies": [
+        "characters",
+        "collection",
+        "material_color_utilities",
+        "meta",
+        "sky_engine",
+        "vector_math"
+      ]
+    },
+    {
       "name": "http_parser",
       "version": "4.1.2",
       "dependencies": [
@@ -193,23 +192,6 @@
     {
       "name": "synchronized",
       "version": "3.4.0",
-      "dependencies": []
-    },
-    {
-      "name": "sky_engine",
-      "version": "0.0.0",
-      "dependencies": []
-    },
-    {
-      "name": "material_color_utilities",
-      "version": "0.11.1",
-      "dependencies": [
-        "collection"
-      ]
-    },
-    {
-      "name": "characters",
-      "version": "1.4.0",
       "dependencies": []
     },
     {
@@ -260,6 +242,23 @@
         "source_span",
         "string_scanner"
       ]
+    },
+    {
+      "name": "sky_engine",
+      "version": "0.0.0",
+      "dependencies": []
+    },
+    {
+      "name": "material_color_utilities",
+      "version": "0.11.1",
+      "dependencies": [
+        "collection"
+      ]
+    },
+    {
+      "name": "characters",
+      "version": "1.4.0",
+      "dependencies": []
     },
     {
       "name": "typed_data",
