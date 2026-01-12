@@ -1,4 +1,3 @@
-
 import 'package:flutter/foundation.dart';
 import 'package:sqflite_common/sqlite_api.dart';
 import 'package:path/path.dart' as path;
@@ -7,10 +6,10 @@ import 'workbench_server.dart';
 /// Extension on Database to enable workbench
 extension DatabaseWorkbench on Database {
   /// Enable the SQLite workbench for this database
-  /// 
+  ///
   /// [name] - Optional custom name for the database in the workbench UI
   /// [port] - Port number for the web server (default: 8080)
-  /// 
+  ///
   /// Example:
   /// ```dart
   /// final db = await openDatabase('my_db.db');
@@ -30,9 +29,7 @@ extension DatabaseWorkbench on Database {
     }
 
     // Generate unique ID from path or use custom name
-    final dbId = name != null 
-        ? _sanitizeId(name)
-        : _generateIdFromPath(dbPath);
+    final dbId = name != null ? _sanitizeId(name) : _generateIdFromPath(dbPath);
 
     // Update port if specified
     if (port != null) {
@@ -64,4 +61,3 @@ extension DatabaseWorkbench on Database {
         .toLowerCase();
   }
 }
-

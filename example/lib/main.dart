@@ -3,11 +3,11 @@ import 'database_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize database
   final dbHelper = DatabaseHelper();
   await dbHelper.initDatabase();
-  
+
   runApp(const MyApp());
 }
 
@@ -57,16 +57,15 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _addTodo() async {
     if (_titleController.text.trim().isEmpty) return;
-    
+
     await _dbHelper.insertTodo({
       'title': _titleController.text.trim(),
       'completed': 0,
       'created_at': DateTime.now().toIso8601String(),
     });
-    
+
     _titleController.clear();
     _loadTodos();
-    
   }
 
   Future<void> _toggleTodo(int id, bool completed) async {
@@ -77,7 +76,6 @@ class _HomePageState extends State<HomePage> {
   Future<void> _deleteTodo(int id) async {
     await _dbHelper.deleteTodo(id);
     _loadTodos();
-    
   }
 
   @override
@@ -120,7 +118,7 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
-          
+
           // Info Banner
           Container(
             width: double.infinity,
@@ -136,7 +134,8 @@ class _HomePageState extends State<HomePage> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                    Icon(Icons.info_outline,
+                        color: Colors.blue.shade700, size: 20),
                     const SizedBox(width: 8),
                     Text(
                       'Workbench Active',
@@ -155,9 +154,9 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Todos List
           Expanded(
             child: _isLoading
@@ -174,7 +173,7 @@ class _HomePageState extends State<HomePage> {
                         itemBuilder: (context, index) {
                           final todo = _todos[index];
                           final isCompleted = todo['completed'] == 1;
-                          
+
                           return Card(
                             margin: const EdgeInsets.symmetric(
                               horizontal: 16,
@@ -202,7 +201,8 @@ class _HomePageState extends State<HomePage> {
                                 style: const TextStyle(fontSize: 12),
                               ),
                               trailing: IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
+                                icon:
+                                    const Icon(Icons.delete, color: Colors.red),
                                 onPressed: () => _deleteTodo(todo['id'] as int),
                               ),
                             ),
@@ -221,4 +221,3 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 }
-

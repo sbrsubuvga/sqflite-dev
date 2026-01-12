@@ -66,13 +66,13 @@ class DatabaseHelper {
       'completed': 0,
       'created_at': DateTime.now().toIso8601String(),
     });
-    
+
     await db.insert('todos', {
       'title': 'Check out the workbench at http://localhost:8080',
       'completed': 0,
       'created_at': DateTime.now().toIso8601String(),
     });
-    
+
     await db.insert('todos', {
       'title': 'Try running queries in the Query Browser tab',
       'completed': 1,
@@ -142,4 +142,3 @@ class DatabaseHelper {
     _database = null;
   }
 }
-

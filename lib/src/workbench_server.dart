@@ -46,7 +46,8 @@ class WorkbenchServer {
     if (_server == null) {
       _startServer();
     } else {
-      print('sqflite_dev: Database "$dbId" registered. Workbench already running.');
+      print(
+          'sqflite_dev: Database "$dbId" registered. Workbench already running.');
     }
   }
 
@@ -77,7 +78,7 @@ class WorkbenchServer {
 
       // Get network IP - wait a short moment for detection
       _localIp = await _getLocalIpAddress(_server!.address);
-      
+
       print('');
       print('═══════════════════════════════════════════════════════════');
       print('sqflite_dev: Workbench server started!');
@@ -92,7 +93,8 @@ class WorkbenchServer {
       print('');
     } catch (e) {
       // Port might be in use, try next port
-      if (e is SocketException && e.message.contains('Address already in use')) {
+      if (e is SocketException &&
+          e.message.contains('Address already in use')) {
         print('sqflite_dev: Port $_port is in use, trying next port...');
         _port++;
         return _startServer();
@@ -121,16 +123,18 @@ class WorkbenchServer {
       if (request.url.path.startsWith('api/')) {
         return apiHandler(request);
       }
-      
+
       // Serve embedded web UI for root and index.html
       final requestPath = request.url.path;
-      if (requestPath == '' || requestPath == '/' || requestPath == '/index.html') {
+      if (requestPath == '' ||
+          requestPath == '/' ||
+          requestPath == '/index.html') {
         return Response.ok(
           _getWebUIHtml(),
           headers: {'Content-Type': 'text/html; charset=utf-8'},
         );
       }
-      
+
       // For any other path, return 404 or the embedded HTML
       return Response.ok(
         _getWebUIHtml(),
@@ -1315,7 +1319,7 @@ function escapeHtml(text) {
             if (secondOctet != null && secondOctet >= 16 && secondOctet <= 31) {
               if (preferredIp == null ||
                   (!preferredIp.startsWith('192.168.') &&
-                   !preferredIp.startsWith('10.'))) {
+                      !preferredIp.startsWith('10.'))) {
                 preferredIp = address;
               }
             }
@@ -1339,7 +1343,7 @@ function escapeHtml(text) {
   /// Update server port (restart server)
   Future<void> updatePort(int newPort) async {
     if (_port == newPort) return;
-    
+
     _port = newPort;
     if (_server != null) {
       await _server!.close(force: true);
@@ -1376,4 +1380,3 @@ class DatabaseInfo {
     required this.name,
   });
 }
-

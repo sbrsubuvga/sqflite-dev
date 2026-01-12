@@ -11,11 +11,13 @@ Handler createApiHandler(WorkbenchServer server) {
 
     // List all databases
     if (method == 'GET' && path == 'api/databases') {
-      final databases = server.databases.values.map((db) => {
-        'id': db.id,
-        'name': db.name,
-        'path': db.path,
-      }).toList();
+      final databases = server.databases.values
+          .map((db) => {
+                'id': db.id,
+                'name': db.name,
+                'path': db.path,
+              })
+          .toList();
 
       return Response.ok(
         jsonEncode({'databases': databases}),
@@ -24,7 +26,8 @@ Handler createApiHandler(WorkbenchServer server) {
     }
 
     // Get database info
-    final dbInfoMatch = RegExp(r'^api/databases/([^/]+)/info$').firstMatch(path);
+    final dbInfoMatch =
+        RegExp(r'^api/databases/([^/]+)/info$').firstMatch(path);
     if (method == 'GET' && dbInfoMatch != null) {
       final dbId = dbInfoMatch.group(1)!;
       final dbInfo = server.getDatabase(dbId);
@@ -59,7 +62,8 @@ Handler createApiHandler(WorkbenchServer server) {
     }
 
     // List tables for a database
-    final tablesMatch = RegExp(r'^api/databases/([^/]+)/tables$').firstMatch(path);
+    final tablesMatch =
+        RegExp(r'^api/databases/([^/]+)/tables$').firstMatch(path);
     if (method == 'GET' && tablesMatch != null) {
       final dbId = tablesMatch.group(1)!;
       final dbInfo = server.getDatabase(dbId);
@@ -87,7 +91,8 @@ Handler createApiHandler(WorkbenchServer server) {
     }
 
     // Get table count
-    final countMatch = RegExp(r'^api/databases/([^/]+)/table/([^/]+)/count$').firstMatch(path);
+    final countMatch =
+        RegExp(r'^api/databases/([^/]+)/table/([^/]+)/count$').firstMatch(path);
     if (method == 'GET' && countMatch != null) {
       final dbId = countMatch.group(1)!;
       final tableName = countMatch.group(2)!;
@@ -115,7 +120,8 @@ Handler createApiHandler(WorkbenchServer server) {
     }
 
     // Get table data with pagination
-    final tableDataMatch = RegExp(r'^api/databases/([^/]+)/table/([^/]+)$').firstMatch(path);
+    final tableDataMatch =
+        RegExp(r'^api/databases/([^/]+)/table/([^/]+)$').firstMatch(path);
     if (method == 'GET' && tableDataMatch != null) {
       final dbId = tableDataMatch.group(1)!;
       final tableName = tableDataMatch.group(2)!;
@@ -125,8 +131,10 @@ Handler createApiHandler(WorkbenchServer server) {
       }
 
       try {
-        final page = int.tryParse(request.url.queryParameters['page'] ?? '1') ?? 1;
-        final limit = int.tryParse(request.url.queryParameters['limit'] ?? '50') ?? 50;
+        final page =
+            int.tryParse(request.url.queryParameters['page'] ?? '1') ?? 1;
+        final limit =
+            int.tryParse(request.url.queryParameters['limit'] ?? '50') ?? 50;
         final offset = (page - 1) * limit;
 
         // Get total count
@@ -161,7 +169,8 @@ Handler createApiHandler(WorkbenchServer server) {
     }
 
     // Get table schema
-    final schemaMatch = RegExp(r'^api/databases/([^/]+)/schema/([^/]+)$').firstMatch(path);
+    final schemaMatch =
+        RegExp(r'^api/databases/([^/]+)/schema/([^/]+)$').firstMatch(path);
     if (method == 'GET' && schemaMatch != null) {
       final dbId = schemaMatch.group(1)!;
       final tableName = schemaMatch.group(2)!;
@@ -172,13 +181,14 @@ Handler createApiHandler(WorkbenchServer server) {
 
       try {
         // Get table info
-        final tableInfo = await dbInfo.database.rawQuery('PRAGMA table_info("$tableName")');
-        
+        final tableInfo =
+            await dbInfo.database.rawQuery('PRAGMA table_info("$tableName")');
+
         // Get CREATE TABLE statement
         final createTable = await dbInfo.database.rawQuery(
           "SELECT sql FROM sqlite_master WHERE type='table' AND name='$tableName'",
         );
-        
+
         // Get indexes
         final indexes = await dbInfo.database.rawQuery(
           "SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name='$tableName'",
@@ -187,7 +197,8 @@ Handler createApiHandler(WorkbenchServer server) {
         return Response.ok(
           jsonEncode({
             'columns': tableInfo,
-            'createTable': createTable.isNotEmpty ? createTable.first['sql'] : null,
+            'createTable':
+                createTable.isNotEmpty ? createTable.first['sql'] : null,
             'indexes': indexes,
           }),
           headers: {'Content-Type': 'application/json'},
@@ -201,7 +212,8 @@ Handler createApiHandler(WorkbenchServer server) {
     }
 
     // Get indexes for a table
-    final indexesMatch = RegExp(r'^api/databases/([^/]+)/indexes/([^/]+)$').firstMatch(path);
+    final indexesMatch =
+        RegExp(r'^api/databases/([^/]+)/indexes/([^/]+)$').firstMatch(path);
     if (method == 'GET' && indexesMatch != null) {
       final dbId = indexesMatch.group(1)!;
       final tableName = indexesMatch.group(2)!;
@@ -228,7 +240,8 @@ Handler createApiHandler(WorkbenchServer server) {
     }
 
     // Execute SQL query
-    final queryMatch = RegExp(r'^api/databases/([^/]+)/query$').firstMatch(path);
+    final queryMatch =
+        RegExp(r'^api/databases/([^/]+)/query$').firstMatch(path);
     if (method == 'POST' && queryMatch != null) {
       final dbId = queryMatch.group(1)!;
       final dbInfo = server.getDatabase(dbId);
@@ -249,7 +262,7 @@ Handler createApiHandler(WorkbenchServer server) {
         }
 
         final stopwatch = Stopwatch()..start();
-        
+
         // Execute query
         final result = await dbInfo.database.rawQuery(query);
         stopwatch.stop();
@@ -273,10 +286,10 @@ Handler createApiHandler(WorkbenchServer server) {
     // Legacy endpoints for backward compatibility
     if (method == 'GET' && path == 'api/tables') {
       final dbId = request.url.queryParameters['db'];
-      final dbInfo = dbId != null 
+      final dbInfo = dbId != null
           ? server.getDatabase(dbId)
-          : server.databases.values.isNotEmpty 
-              ? server.databases.values.first 
+          : server.databases.values.isNotEmpty
+              ? server.databases.values.first
               : null;
 
       if (dbInfo == null) {
