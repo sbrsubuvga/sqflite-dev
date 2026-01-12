@@ -21,7 +21,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
-  # Add sqflite_dev as a dev dependency
+  # Add sqflite_dev as a dev dependency (as it should be in real projects)
   sqflite_dev:
     path: ../
 

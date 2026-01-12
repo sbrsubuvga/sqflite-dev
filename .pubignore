@@ -1,0 +1,3 @@
+# Exclude example directory from pub publish validation
+example/
+
