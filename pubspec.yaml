@@ -1,6 +1,6 @@
 name: sqflite_dev
 description: A developer dependency package that provides a web-based SQLite workbench for Flutter apps during development. Works with both sqflite (mobile) and sqflite_common_ffi (desktop).
-version: 1.0.0
+version: 1.0.1
 homepage: https://github.com/sbrsubuvga/sqflite-dev
 license: MIT
 

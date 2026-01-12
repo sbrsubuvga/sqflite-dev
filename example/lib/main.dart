@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+// See database_helper.dart for database initialization and CRUD operations
 import 'database_helper.dart';
 
 void main() async {
