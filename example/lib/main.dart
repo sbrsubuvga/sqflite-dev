@@ -266,7 +266,6 @@ class DatabaseHelper {
       webDebugPort: 8080,
       webDebugName: 'TodosDB',
     );
-
   }
 
   /// Create database tables
