@@ -129,20 +129,36 @@ void main() async {
 
 ### Multiple Databases
 
-You can register multiple databases:
+You can register multiple databases - they will all be accessible through the same web portal:
 
 ```dart
+import 'package:flutter/foundation.dart';
+import 'package:sqflite_dev/sqflite_dev.dart';
+
+// Register multiple databases
 final db1 = await openDatabase('main.db');
-db1.enableWorkbench(webDebugName: 'MainDB');
+db1.enableWorkbench(
+  webDebug: !kReleaseMode,
+  webDebugName: 'MainDB',
+  webDebugPort: 8080,
+);
 
 final db2 = await openDatabase('cache.db');
-db2.enableWorkbench(webDebugName: 'CacheDB');
+db2.enableWorkbench(
+  webDebug: !kReleaseMode,
+  webDebugName: 'CacheDB',
+  webDebugPort: 8080, // Same port - all databases share the same server
+);
 
 final db3 = await openDatabase('user.db');
-db3.enableWorkbench(webDebugName: 'UserDB');
+db3.enableWorkbench(
+  webDebug: !kReleaseMode,
+  webDebugName: 'UserDB',
+  webDebugPort: 8080,
+);
 ```
 
-All databases will be accessible through the same web portal. Use the database selector in the header to switch between them.
+All databases will be accessible through the same web portal. Use the database selector dropdown in the header to switch between them. Each database can have its own custom name for easy identification.
 
 ### Automatic Release Mode Detection
 
