@@ -30,7 +30,7 @@ Add this package to your `dev_dependencies` in `pubspec.yaml`:
 
 ```yaml
 dev_dependencies:
-  sqflite_dev: ^1.0.6
+  sqflite_dev: ^1.0.7
 ```
 
 Then run:
@@ -48,6 +48,7 @@ flutter pub get
 This is the easiest way, similar to `sqflite_orm`'s `webDebug` option:
 
 ```dart
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart'; // or sqflite_common_ffi for desktop
 import 'package:sqflite_dev/sqflite_dev.dart';
 
@@ -68,9 +69,9 @@ void main() async {
     },
   );
   
-  // Enable workbench
+  // Enable workbench (automatically disabled in release builds)
   db.enableWorkbench(
-    webDebug: true,
+    webDebug: !kReleaseMode, // Automatically disabled in release mode
     webDebugPort: 8080,
     webDebugName: 'MyAppDB',
   );
@@ -103,6 +104,7 @@ void main() async {
 ### Desktop (Linux/Windows/macOS) with sqflite_common_ffi
 
 ```dart
+import 'package:flutter/foundation.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_dev/sqflite_dev.dart';
 
@@ -114,9 +116,9 @@ void main() async {
   // Open your database
   final db = await openDatabase('my_database.db');
   
-  // Enable workbench
+  // Enable workbench (automatically disabled in release builds)
   db.enableWorkbench(
-    webDebug: true,
+    webDebug: !kReleaseMode, // Automatically disabled in release mode
     webDebugPort: 8080,
     webDebugName: 'MyDatabase',
   );
@@ -141,6 +143,24 @@ db3.enableWorkbench(webDebugName: 'UserDB');
 ```
 
 All databases will be accessible through the same web portal. Use the database selector in the header to switch between them.
+
+### Automatic Release Mode Detection
+
+For best practices, use `kReleaseMode` to automatically disable the workbench in release builds:
+
+```dart
+import 'package:flutter/foundation.dart';
+import 'package:sqflite_dev/sqflite_dev.dart';
+
+// Enable workbench only in debug/profile builds
+db.enableWorkbench(
+  webDebug: !kReleaseMode, // Automatically disabled in release builds
+  webDebugPort: 8080,
+  webDebugName: 'MyDatabase',
+);
+```
+
+This ensures the workbench is never enabled in production builds, even if you forget to set `webDebug: false`.
 
 ### Custom Port
 
@@ -200,8 +220,9 @@ sqflite_dev: Workbench server started!
 - ✅ Should be in `dev_dependencies` (excluded from production builds)
 - ✅ Accessible only on your local network
 - ✅ User controls enablement via `webDebug` parameter
+- ✅ **Recommended**: Use `webDebug: !kReleaseMode` to automatically disable in release builds
 - ⚠️ **Never use in production** - this is a development tool only
-- ⚠️ **Always set `webDebug: false` in production code** - even though it's in dev_dependencies, be explicit
+- ⚠️ **Always set `webDebug: false` or use `!kReleaseMode` in production code** - even though it's in dev_dependencies, be explicit
 
 ## Troubleshooting
 
