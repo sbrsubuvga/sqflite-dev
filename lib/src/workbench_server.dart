@@ -199,15 +199,40 @@ ${_getWebUICSS()}
                 <div id="tableContent" class="table-content" style="display: none;">
                     <!-- Tab Bar -->
                     <div class="tab-bar">
-                        <button class="tab-btn active" data-tab="info">Table Info</button>
-                        <button class="tab-btn" data-tab="data">Table Data</button>
+                        <button class="tab-btn active" data-tab="data">Table Data</button>
+                        <button class="tab-btn" data-tab="info">Table Info</button>
                         <button class="tab-btn" data-tab="query">Query Browser</button>
                     </div>
 
                     <!-- Tab Content -->
                     <div class="tab-content">
+                        <!-- Table Data Tab -->
+                        <div id="tab-data" class="tab-pane active">
+                            <div class="data-controls">
+                                <div class="pagination-controls">
+                                    <label>Page Size:
+                                        <select id="pageSize">
+                                            <option value="10">10</option>
+                                            <option value="25" selected>25</option>
+                                            <option value="50">50</option>
+                                            <option value="100">100</option>
+                                        </select>
+                                    </label>
+                                    <div class="page-info" id="pageInfo"></div>
+                                    <div id="pageNav" class="page-nav"></div>
+                                </div>
+                                <button id="exportData" class="btn-primary">Export CSV</button>
+                            </div>
+                            <div class="table-container">
+                                <table id="dataTable" class="data-table">
+                                    <thead id="dataTableHead"></thead>
+                                    <tbody id="dataTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
                         <!-- Table Info Tab -->
-                        <div id="tab-info" class="tab-pane active">
+                        <div id="tab-info" class="tab-pane">
                             <div class="info-section">
                                 <h3>Schema</h3>
                                 <div id="schemaContent"></div>
@@ -222,58 +247,13 @@ ${_getWebUICSS()}
                             </div>
                         </div>
 
-                        <!-- Table Data Tab -->
-                        <div id="tab-data" class="tab-pane">
-                            <div class="data-controls">
-                                <div class="pagination-controls">
-                                    <label>Page Size:
-                                        <select id="pageSize">
-                                            <option value="10">10</option>
-                                            <option value="25" selected>25</option>
-                                            <option value="50">50</option>
-                                            <option value="100">100</option>
-                                        </select>
-                                    </label>
-                                    <div class="page-info" id="pageInfo"></div>
-                                    <div class="page-nav">
-                                        <button id="firstPage" class="btn-small">First</button>
-                                        <button id="prevPage" class="btn-small">Prev</button>
-                                        <button id="nextPage" class="btn-small">Next</button>
-                                        <button id="lastPage" class="btn-small">Last</button>
-                                    </div>
-                                </div>
-                                <button id="exportData" class="btn-primary">Export CSV</button>
-                            </div>
-                            <div class="table-container">
-                                <table id="dataTable" class="data-table">
-                                    <thead id="dataTableHead"></thead>
-                                    <tbody id="dataTableBody"></tbody>
-                                </table>
-                            </div>
-                        </div>
-
                         <!-- Query Browser Tab -->
-                        <div id="tab-query" class="tab-pane">
-                            <div class="query-editor-container">
-                                <textarea id="queryEditor" class="query-editor" placeholder="Enter SQL query..."></textarea>
-                                <div class="query-controls">
-                                    <button id="executeQuery" class="btn-primary">Execute (Ctrl+Enter)</button>
-                                    <span id="queryTime" class="query-time"></span>
-                                </div>
+                        <div id="tab-query" class="tab-pane query-browser-pane">
+                            <div class="query-tabs-header">
+                                <div id="queryTabsList" class="query-tabs-list"></div>
+                                <button id="addQueryTab" class="btn-icon" title="New Query Tab">+</button>
                             </div>
-                            <div id="queryHistory" class="query-history">
-                                <h4>Query History</h4>
-                                <div id="historyList"></div>
-                            </div>
-                            <div id="queryResults" class="query-results">
-                                <div class="table-container">
-                                    <table id="queryTable" class="data-table">
-                                        <thead id="queryTableHead"></thead>
-                                        <tbody id="queryTableBody"></tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <div id="queryError" class="error-message"></div>
+                            <div id="queryTabsContent" class="query-tabs-content"></div>
                         </div>
                     </div>
                 </div>
@@ -463,6 +443,46 @@ body {
     cursor: pointer;
     border-radius: 4px;
     margin: 0.25rem 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.table-item .table-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.table-item .refresh-btn {
+    opacity: 0;
+    transition: opacity 0.2s;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 1.1rem;
+}
+
+.table-item:hover .refresh-btn {
+    opacity: 1;
+}
+
+.table-item .refresh-btn:hover {
+    background-color: rgba(0,0,0,0.1);
+    color: var(--primary-color);
+}
+
+.table-item.active .refresh-btn {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.table-item.active .refresh-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
 }
 
 .table-item:hover {
@@ -618,7 +638,40 @@ pre {
 
 .page-nav {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.page-btn {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--card-bg);
+    color: var(--text-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+}
+
+.page-btn:hover:not(:disabled) {
+    background: var(--bg-color);
+    border-color: var(--text-muted);
+}
+
+.page-btn.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.page-btn:disabled {
+    cursor: default;
+    opacity: 0.6;
 }
 
 .btn-small, .btn-primary {
@@ -752,6 +805,95 @@ pre {
     display: block;
 }
 
+/* Query Tabs */
+.query-browser-pane {
+    display: none;
+    flex-direction: column;
+    height: 100%;
+    padding: 0;
+}
+
+.query-browser-pane.active {
+    display: flex;
+}
+
+.query-tabs-header {
+    display: flex;
+    align-items: center;
+    background: var(--bg-color);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 0.5rem;
+    flex-shrink: 0;
+}
+
+.query-tabs-list {
+    display: flex;
+    overflow-x: auto;
+    flex: 1;
+}
+
+.query-tab {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    border-right: 1px solid var(--border-color);
+    background: var(--bg-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 100px;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    user-select: none;
+}
+
+.query-tab:hover {
+    background: #e9ecef;
+}
+
+.query-tab.active {
+    background: var(--card-bg);
+    border-bottom: 2px solid var(--primary-color);
+    font-weight: 500;
+}
+
+.query-tab-close {
+    font-size: 1.1rem;
+    line-height: 1;
+    color: var(--text-muted);
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.query-tab-close:hover {
+    background: rgba(0,0,0,0.1);
+    color: var(--danger-color);
+}
+
+.query-tabs-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.query-tab-pane {
+    display: none;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+    padding: 1rem;
+    flex: 1;
+}
+
+.query-tab-pane.active {
+    display: block;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .main-content {
@@ -777,10 +919,13 @@ let state = {
     databases: [],
     currentDbId: null,
     currentTable: null,
-    currentTab: 'info',
+    currentTab: 'data',
     currentPage: 1,
     pageSize: 25,
-    queryHistory: []
+    queryHistory: [],
+    queryTabs: [],
+    activeQueryTabId: null,
+    nextQueryTabId: 1
 };
 
 // API base URL
@@ -794,6 +939,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function initializeApp() {
     await loadDatabases();
     setupEventListeners();
+    initQueryTabs();
     checkConnection();
     setInterval(checkConnection, 5000); // Check every 5 seconds
 }
@@ -832,46 +978,17 @@ function setupEventListeners() {
         }
     });
 
-    document.getElementById('firstPage').addEventListener('click', () => {
-        state.currentPage = 1;
-        loadTableData(state.currentDbId, state.currentTable);
-    });
-
-    document.getElementById('prevPage').addEventListener('click', () => {
-        if (state.currentPage > 1) {
-            state.currentPage--;
-            loadTableData(state.currentDbId, state.currentTable);
-        }
-    });
-
-    document.getElementById('nextPage').addEventListener('click', () => {
-        state.currentPage++;
-        loadTableData(state.currentDbId, state.currentTable);
-    });
-
-    document.getElementById('lastPage').addEventListener('click', () => {
-        // Will be set after loading data
-        loadTableData(state.currentDbId, state.currentTable);
-    });
-
-    // Query execution
-    document.getElementById('executeQuery').addEventListener('click', executeQuery);
-    
-    // Keyboard shortcut for query execution
-    document.getElementById('queryEditor').addEventListener('keydown', (e) => {
-        if (e.ctrlKey && e.key === 'Enter') {
-            executeQuery();
-        }
-    });
-
     // Export data
     document.getElementById('exportData').addEventListener('click', exportTableData);
+
+    // Add Query Tab
+    document.getElementById('addQueryTab').addEventListener('click', addQueryTab);
 }
 
 // Load databases
 async function loadDatabases() {
     try {
-        const response = await fetch(\`\${API_BASE}/databases\`);
+        const response = await fetch(`\${API_BASE}/databases`);
         const data = await response.json();
         state.databases = data.databases || [];
         
@@ -881,7 +998,7 @@ async function loadDatabases() {
         state.databases.forEach(db => {
             const option = document.createElement('option');
             option.value = db.id;
-            option.textContent = \`\${db.name} (\${db.id})\`;
+            option.textContent = `\${db.name} (\${db.id})`;
             selector.appendChild(option);
         });
 
@@ -914,7 +1031,7 @@ async function selectDatabase(dbId) {
 // Load database info
 async function loadDatabaseInfo(dbId) {
     try {
-        const response = await fetch(\`\${API_BASE}/databases/\${dbId}/info\`);
+        const response = await fetch(`\${API_BASE}/databases/\${dbId}/info`);
         const data = await response.json();
         // Could display more info here
     } catch (error) {
@@ -925,7 +1042,7 @@ async function loadDatabaseInfo(dbId) {
 // Load tables
 async function loadTables(dbId) {
     try {
-        const response = await fetch(\`\${API_BASE}/databases/\${dbId}/tables\`);
+        const response = await fetch(`\${API_BASE}/databases/\${dbId}/tables`);
         const data = await response.json();
         const tables = data.tables || [];
         
@@ -949,7 +1066,35 @@ async function loadTables(dbId) {
         tables.forEach(tableName => {
             const item = document.createElement('div');
             item.className = 'table-item';
-            item.textContent = tableName;
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'table-name';
+            nameSpan.textContent = tableName;
+            item.appendChild(nameSpan);
+
+            const refreshBtn = document.createElement('button');
+            refreshBtn.className = 'refresh-btn';
+            refreshBtn.innerHTML = '↻';
+            refreshBtn.title = 'Refresh Table';
+            refreshBtn.onclick = (e) => {
+                e.stopPropagation();
+                if (state.currentTable === tableName) {
+                    // If this table is already open, refresh the current view
+                    if (state.currentTab === 'data') {
+                        loadTableData(dbId, tableName);
+                    } else if (state.currentTab === 'info') {
+                        loadTableInfo(dbId, tableName);
+                    }
+                } else {
+                    // If not open, select it (which loads it)
+                    selectTable(tableName);
+                    // Update active state
+                    document.querySelectorAll('.table-item').forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+                }
+            };
+            item.appendChild(refreshBtn);
+
             item.addEventListener('click', () => {
                 selectTable(tableName);
                 // Update active state
@@ -997,7 +1142,7 @@ function switchTab(tab) {
     document.querySelectorAll('.tab-pane').forEach(pane => {
         pane.classList.remove('active');
     });
-    document.getElementById(\`tab-\${tab}\`).classList.add('active');
+    document.getElementById(`tab-\${tab}`).classList.add('active');
 
     // Load data if table is selected
     if (state.currentDbId && state.currentTable) {
@@ -1012,7 +1157,7 @@ function switchTab(tab) {
 // Load table info
 async function loadTableInfo(dbId, tableName) {
     try {
-        const response = await fetch(\`\${API_BASE}/databases/\${dbId}/schema/\${tableName}\`);
+        const response = await fetch(`\${API_BASE}/databases/\${dbId}/schema/\${tableName}`);
         const data = await response.json();
         
         // Display schema
@@ -1024,11 +1169,11 @@ async function loadTableInfo(dbId, tableName) {
             
             data.columns.forEach(col => {
                 html += '<tr>';
-                html += \`<td>\${escapeHtml(col.name || '')}</td>\`;
-                html += \`<td>\${escapeHtml(col.type || '')}</td>\`;
-                html += \`<td>\${col.notnull === 1 ? 'Yes' : 'No'}</td>\`;
-                html += \`<td>\${escapeHtml(String(col.dflt_value || ''))}</td>\`;
-                html += \`<td>\${col.pk === 1 ? 'Yes' : 'No'}</td>\`;
+                html += `<td>\${escapeHtml(col.name || '')}</td>`;
+                html += `<td>\${escapeHtml(col.type || '')}</td>`;
+                html += `<td>\${col.notnull === 1 ? 'Yes' : 'No'}</td>`;
+                html += `<td>\${escapeHtml(String(col.dflt_value || ''))}</td>`;
+                html += `<td>\${col.pk === 1 ? 'Yes' : 'No'}</td>`;
                 html += '</tr>';
             });
             
@@ -1044,8 +1189,8 @@ async function loadTableInfo(dbId, tableName) {
             let html = '<table class="indexes-table"><thead><tr><th>Name</th><th>SQL</th></tr></thead><tbody>';
             data.indexes.forEach(idx => {
                 html += '<tr>';
-                html += \`<td>\${escapeHtml(idx.name || '')}</td>\`;
-                html += \`<td><code>\${escapeHtml(idx.sql || '')}</code></td>\`;
+                html += `<td>\${escapeHtml(idx.name || '')}</td>`;
+                html += `<td><code>\${escapeHtml(idx.sql || '')}</code></td>`;
                 html += '</tr>';
             });
             html += '</tbody></table>';
@@ -1066,7 +1211,7 @@ async function loadTableInfo(dbId, tableName) {
 async function loadTableData(dbId, tableName) {
     try {
         const response = await fetch(
-            \`\${API_BASE}/databases/\${dbId}/table/\${tableName}?page=\${state.currentPage}&limit=\${state.pageSize}\`
+            `\${API_BASE}/databases/\${dbId}/table/\${tableName}?page=\${state.currentPage}&limit=\${state.pageSize}`
         );
         const data = await response.json();
         
@@ -1077,7 +1222,7 @@ async function loadTableData(dbId, tableName) {
             // Build table header
             const thead = document.getElementById('dataTableHead');
             thead.innerHTML = '<tr>' + columns.map(col => 
-                \`<th>\${escapeHtml(col)}</th>\`
+                `<th>\${escapeHtml(col)}</th>`
             ).join('') + '</tr>';
             
             // Build table body
@@ -1085,7 +1230,7 @@ async function loadTableData(dbId, tableName) {
             tbody.innerHTML = data.data.map(row => {
                 return '<tr>' + columns.map(col => {
                     const value = row[col];
-                    return \`<td>\${escapeHtml(value != null ? String(value) : 'NULL')}</td>\`;
+                    return `<td>\${escapeHtml(value != null ? String(value) : 'NULL')}</td>`;
                 }).join('') + '</tr>';
             }).join('');
             
@@ -1095,19 +1240,9 @@ async function loadTableData(dbId, tableName) {
             state.currentPage = pagination.page;
             
             document.getElementById('pageInfo').textContent = 
-                \`Page \${pagination.page} of \${totalPages} (\${pagination.total} rows)\`;
+                `Page \${pagination.page} of \${totalPages} (\${pagination.total} rows)`;
             
-            // Update last page button
-            document.getElementById('lastPage').onclick = () => {
-                state.currentPage = totalPages;
-                loadTableData(dbId, tableName);
-            };
-            
-            // Enable/disable navigation buttons
-            document.getElementById('firstPage').disabled = state.currentPage === 1;
-            document.getElementById('prevPage').disabled = state.currentPage === 1;
-            document.getElementById('nextPage').disabled = state.currentPage >= totalPages;
-            document.getElementById('lastPage').disabled = state.currentPage >= totalPages;
+            renderPagination(totalPages, state.currentPage);
         } else {
             document.getElementById('dataTableHead').innerHTML = '';
             document.getElementById('dataTableBody').innerHTML = 
@@ -1118,35 +1253,188 @@ async function loadTableData(dbId, tableName) {
     }
 }
 
+// Query Tabs Logic
+
+function initQueryTabs() {
+    addQueryTab();
+}
+
+function addQueryTab() {
+    const id = 'qt_' + state.nextQueryTabId++;
+    const name = 'Query ' + (state.queryTabs.length + 1);
+    
+    const tab = {
+        id: id,
+        name: name,
+        query: ''
+    };
+    
+    state.queryTabs.push(tab);
+    
+    // Create DOM elements
+    createQueryTabElements(tab);
+    
+    // Select it
+    selectQueryTab(id);
+}
+
+function createQueryTabElements(tab) {
+    // 1. Tab Header Item
+    const tabHeader = document.createElement('div');
+    tabHeader.className = 'query-tab';
+    tabHeader.dataset.id = tab.id;
+    tabHeader.innerHTML = `
+        <span class="query-tab-name">\${tab.name}</span>
+        <span class="query-tab-close" title="Close Tab">×</span>
+    `;
+    
+    tabHeader.querySelector('.query-tab-name').addEventListener('click', () => {
+        selectQueryTab(tab.id);
+    });
+    
+    tabHeader.querySelector('.query-tab-close').addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeQueryTab(tab.id);
+    });
+    
+    document.getElementById('queryTabsList').appendChild(tabHeader);
+    
+    // 2. Tab Content Pane
+    const content = document.createElement('div');
+    content.className = 'query-tab-pane';
+    content.id = 'pane_' + tab.id;
+    content.innerHTML = `
+        <div class="query-editor-container">
+            <textarea class="query-editor" placeholder="Enter SQL query..."></textarea>
+            <div class="query-controls">
+                <button class="btn-primary execute-btn">Execute (Ctrl+Enter)</button>
+                <span class="query-time"></span>
+            </div>
+        </div>
+        <div class="query-history">
+            <h4>Query History</h4>
+            <div class="history-list"></div>
+        </div>
+        <div class="query-results">
+            <div class="table-container">
+                <table class="data-table">
+                    <thead></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="error-message"></div>
+    `;
+    
+    // Bind events for this specific tab
+    const editor = content.querySelector('.query-editor');
+    const executeBtn = content.querySelector('.execute-btn');
+    
+    executeBtn.addEventListener('click', () => executeQuery(tab.id));
+    
+    editor.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'Enter') {
+            executeQuery(tab.id);
+        }
+    });
+
+    // Populate history (shared history)
+    updateTabHistory(content);
+    
+    document.getElementById('queryTabsContent').appendChild(content);
+}
+
+function selectQueryTab(id) {
+    state.activeQueryTabId = id;
+    
+    // Update Headers
+    document.querySelectorAll('.query-tab').forEach(el => {
+        if (el.dataset.id === id) el.classList.add('active');
+        else el.classList.remove('active');
+    });
+    
+    // Update Panes
+    document.querySelectorAll('.query-tab-pane').forEach(el => {
+        if (el.id === 'pane_' + id) {
+            el.classList.add('active');
+            // Focus editor
+            setTimeout(() => {
+                const editor = el.querySelector('.query-editor');
+                if (editor) editor.focus();
+            }, 0);
+        } else {
+            el.classList.remove('active');
+        }
+    });
+}
+
+function closeQueryTab(id) {
+    if (state.queryTabs.length <= 1) {
+        // Don't close the last tab
+        return; 
+    }
+    
+    const index = state.queryTabs.findIndex(t => t.id === id);
+    if (index === -1) return;
+    
+    state.queryTabs.splice(index, 1);
+    
+    // Remove DOM
+    const header = document.querySelector(\`.query-tab[data-id="\${id}"]\`);
+    if (header) header.remove();
+    
+    const pane = document.getElementById('pane_' + id);
+    if (pane) pane.remove();
+    
+    // If it was active, select another
+    if (state.activeQueryTabId === id) {
+        const nextTab = state.queryTabs[Math.min(index, state.queryTabs.length - 1)];
+        if (nextTab) selectQueryTab(nextTab.id);
+    }
+}
+
 // Execute query
-async function executeQuery() {
+async function executeQuery(tabId) {
+    // If called without tabId (e.g. from global shortcut?), use active
+    tabId = tabId || state.activeQueryTabId;
+    if (typeof tabId !== 'string') tabId = state.activeQueryTabId; // Handle event object
+    
+    if (!tabId) return;
+
     if (!state.currentDbId) {
         alert('Please select a database first');
         return;
     }
 
-    const query = document.getElementById('queryEditor').value.trim();
+    const pane = document.getElementById('pane_' + tabId);
+    const editor = pane.querySelector('.query-editor');
+    const query = editor.value.trim();
+    
     if (!query) {
         alert('Please enter a query');
         return;
     }
 
-    // Add to history
+    // Add to history (Global)
     if (!state.queryHistory.includes(query)) {
         state.queryHistory.unshift(query);
         if (state.queryHistory.length > 10) {
             state.queryHistory.pop();
         }
-        updateQueryHistory();
+        updateAllHistories(); // Update all tabs
     }
+
+    const errorEl = pane.querySelector('.error-message');
+    const resultsEl = pane.querySelector('.query-results');
+    const timeEl = pane.querySelector('.query-time');
+    const thead = pane.querySelector('thead');
+    const tbody = pane.querySelector('tbody');
 
     try {
         const startTime = Date.now();
         const response = await fetch(\`\${API_BASE}/databases/\${state.currentDbId}/query\`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ query }),
         });
 
@@ -1154,23 +1442,19 @@ async function executeQuery() {
         const elapsed = Date.now() - startTime;
 
         if (data.error) {
-            document.getElementById('queryError').textContent = data.error;
-            document.getElementById('queryError').classList.add('show');
-            document.getElementById('queryResults').style.display = 'none';
+            errorEl.textContent = data.error;
+            errorEl.classList.add('show');
+            resultsEl.style.display = 'none';
         } else {
-            document.getElementById('queryError').classList.remove('show');
-            document.getElementById('queryTime').textContent = 
-                \`Executed in \${data.executionTime || elapsed}ms (\${data.rowCount || 0} rows)\`;
+            errorEl.classList.remove('show');
+            timeEl.textContent = \`Executed in \${data.executionTime || elapsed}ms (\${data.rowCount || 0} rows)\`;
             
-            // Display results
             if (data.data && data.data.length > 0) {
                 const columns = Object.keys(data.data[0]);
-                const thead = document.getElementById('queryTableHead');
                 thead.innerHTML = '<tr>' + columns.map(col => 
                     \`<th>\${escapeHtml(col)}</th>\`
                 ).join('') + '</tr>';
                 
-                const tbody = document.getElementById('queryTableBody');
                 tbody.innerHTML = data.data.map(row => {
                     return '<tr>' + columns.map(col => {
                         const value = row[col];
@@ -1178,22 +1462,27 @@ async function executeQuery() {
                     }).join('') + '</tr>';
                 }).join('');
                 
-                document.getElementById('queryResults').style.display = 'block';
+                resultsEl.style.display = 'block';
             } else {
-                document.getElementById('queryResults').style.display = 'none';
+                resultsEl.style.display = 'none';
             }
         }
     } catch (error) {
-        document.getElementById('queryError').textContent = error.toString();
-        document.getElementById('queryError').classList.add('show');
-        document.getElementById('queryResults').style.display = 'none';
+        errorEl.textContent = error.toString();
+        errorEl.classList.add('show');
+        resultsEl.style.display = 'none';
     }
 }
 
-// Update query history
-function updateQueryHistory() {
-    const historyList = document.getElementById('historyList');
-    historyList.innerHTML = '';
+function updateAllHistories() {
+    document.querySelectorAll('.query-tab-pane').forEach(pane => {
+        updateTabHistory(pane);
+    });
+}
+
+function updateTabHistory(pane) {
+    const list = pane.querySelector('.history-list');
+    list.innerHTML = '';
     
     state.queryHistory.forEach(query => {
         const item = document.createElement('div');
@@ -1201,9 +1490,11 @@ function updateQueryHistory() {
         item.textContent = query.substring(0, 100) + (query.length > 100 ? '...' : '');
         item.title = query;
         item.addEventListener('click', () => {
-            document.getElementById('queryEditor').value = query;
+            const editor = pane.querySelector('.query-editor');
+            editor.value = query;
+            editor.focus();
         });
-        historyList.appendChild(item);
+        list.appendChild(item);
     });
 }
 
@@ -1267,6 +1558,61 @@ function updateConnectionStatus(connected) {
         status.classList.add('disconnected');
         status.title = 'Disconnected';
     }
+}
+
+// Render pagination
+function renderPagination(totalPages, currentPage) {
+    const nav = document.getElementById('pageNav');
+    nav.innerHTML = '';
+    
+    if (totalPages <= 1) return;
+
+    const createBtn = (text, page, isActive = false, isDisabled = false) => {
+        const btn = document.createElement('button');
+        btn.className = 'page-btn' + (isActive ? ' active' : '');
+        btn.textContent = text;
+        if (isDisabled) {
+            btn.disabled = true;
+        } else {
+            btn.onclick = () => {
+                if (state.currentPage !== page) {
+                    state.currentPage = page;
+                    loadTableData(state.currentDbId, state.currentTable);
+                }
+            };
+        }
+        return btn;
+    };
+
+    // Previous
+    const prevBtn = createBtn('<', currentPage - 1, false, currentPage === 1);
+    nav.appendChild(prevBtn);
+
+    // Page numbers
+    const delta = 2;
+    const range = [];
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
+            range.push(i);
+        }
+    }
+
+    let l;
+    for (let i of range) {
+        if (l) {
+            if (i - l === 2) {
+                nav.appendChild(createBtn(l + 1, l + 1, false));
+            } else if (i - l !== 1) {
+                nav.appendChild(createBtn('...', null, false, true));
+            }
+        }
+        nav.appendChild(createBtn(i, i, i === currentPage));
+        l = i;
+    }
+
+    // Next
+    const nextBtn = createBtn('>', currentPage + 1, false, currentPage === totalPages);
+    nav.appendChild(nextBtn);
 }
 
 // Utility function
