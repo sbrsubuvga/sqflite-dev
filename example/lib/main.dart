@@ -410,7 +410,8 @@ class DatabaseHelper {
       // Add category_id and priority columns to todos
       try {
         await db.execute('ALTER TABLE todos ADD COLUMN category_id INTEGER');
-        await db.execute('ALTER TABLE todos ADD COLUMN priority INTEGER DEFAULT 0');
+        await db
+            .execute('ALTER TABLE todos ADD COLUMN priority INTEGER DEFAULT 0');
         await db.execute('''
           CREATE TABLE IF NOT EXISTS todos_new (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -458,9 +459,10 @@ class DatabaseHelper {
 
       // Insert sample data only if tables are empty
       final now = DateTime.now().toIso8601String();
-      
+
       // Check if categories table is empty before inserting
-      final categoryCount = await db.rawQuery('SELECT COUNT(*) as count FROM categories');
+      final categoryCount =
+          await db.rawQuery('SELECT COUNT(*) as count FROM categories');
       if ((categoryCount.first['count'] as int) == 0) {
         await db.insert('categories', {
           'name': 'Work',
@@ -480,7 +482,8 @@ class DatabaseHelper {
       }
 
       // Check if users table is empty before inserting
-      final userCount = await db.rawQuery('SELECT COUNT(*) as count FROM users');
+      final userCount =
+          await db.rawQuery('SELECT COUNT(*) as count FROM users');
       if ((userCount.first['count'] as int) == 0) {
         final user1 = await db.insert('users', {
           'username': 'admin',
