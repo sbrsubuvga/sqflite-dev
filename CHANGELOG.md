@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.8] - 2026-01-12
+
+### Added
+- Enhanced example with multiple tables (categories, todos, users, notes)
+- Added foreign key relationships in example database
+- Added database migration example (version 1 to 2)
+
+### Changed
+- Example now demonstrates workbench capabilities with complex multi-table schema
+- Improved example database structure with relationships
+
 ## [1.0.7] - 2026-01-12
 
 ### Changed

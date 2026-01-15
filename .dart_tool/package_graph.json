@@ -5,7 +5,7 @@
   "packages": [
     {
       "name": "sqflite_dev",
-      "version": "1.0.7",
+      "version": "1.0.8",
       "dependencies": [
         "path",
         "shelf",

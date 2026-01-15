@@ -30,7 +30,7 @@ Add this package to your `dev_dependencies` in `pubspec.yaml`:
 
 ```yaml
 dev_dependencies:
-  sqflite_dev: ^1.0.7
+  sqflite_dev: ^1.0.8
 ```
 
 Then run:
