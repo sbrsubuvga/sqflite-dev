@@ -231,7 +231,7 @@ class _HomePageState extends State<HomePage> {
 class DatabaseHelper {
   static Database? _database;
   static const String _databaseName = 'todos.db';
-  static const int _databaseVersion = 1;
+  static const int _databaseVersion = 2;
 
   /// Initialize database - handles platform differences
   Future<void> initDatabase() async {
@@ -271,38 +271,248 @@ class DatabaseHelper {
 
   /// Create database tables
   Future<void> _onCreate(Database db, int version) async {
+    // Create categories table
+    await db.execute('''
+      CREATE TABLE categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        color TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    // Create todos table with category reference
     await db.execute('''
       CREATE TABLE todos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
         completed INTEGER NOT NULL DEFAULT 0,
+        category_id INTEGER,
+        priority INTEGER DEFAULT 0,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (category_id) REFERENCES categories(id)
+      )
+    ''');
+
+    // Create users table
+    await db.execute('''
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        email TEXT NOT NULL,
+        role TEXT DEFAULT 'user',
         created_at TEXT NOT NULL
       )
     ''');
 
-    // Insert some sample data
+    // Create notes table
+    await db.execute('''
+      CREATE TABLE notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        content TEXT,
+        user_id INTEGER,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    ''');
+
+    // Insert sample categories
+    final now = DateTime.now().toIso8601String();
+    final category1 = await db.insert('categories', {
+      'name': 'Work',
+      'color': '#FF5722',
+      'created_at': now,
+    });
+    final category2 = await db.insert('categories', {
+      'name': 'Personal',
+      'color': '#2196F3',
+      'created_at': now,
+    });
+    final category3 = await db.insert('categories', {
+      'name': 'Shopping',
+      'color': '#4CAF50',
+      'created_at': now,
+    });
+
+    // Insert sample users
+    final user1 = await db.insert('users', {
+      'username': 'admin',
+      'email': 'admin@example.com',
+      'role': 'admin',
+      'created_at': now,
+    });
+    final user2 = await db.insert('users', {
+      'username': 'john_doe',
+      'email': 'john@example.com',
+      'role': 'user',
+      'created_at': now,
+    });
+
+    // Insert sample todos
     await db.insert('todos', {
       'title': 'Welcome to SQLite Dev Workbench!',
       'completed': 0,
-      'created_at': DateTime.now().toIso8601String(),
+      'category_id': category1,
+      'priority': 1,
+      'created_at': now,
     });
 
     await db.insert('todos', {
       'title': 'Check out the workbench at http://localhost:8080',
       'completed': 0,
-      'created_at': DateTime.now().toIso8601String(),
+      'category_id': category2,
+      'priority': 2,
+      'created_at': now,
     });
 
     await db.insert('todos', {
       'title': 'Try running queries in the Query Browser tab',
       'completed': 1,
-      'created_at': DateTime.now().toIso8601String(),
+      'category_id': category3,
+      'priority': 0,
+      'created_at': now,
+    });
+
+    // Insert sample notes
+    await db.insert('notes', {
+      'title': 'Project Ideas',
+      'content': 'List of project ideas for the next quarter',
+      'user_id': user1,
+      'created_at': now,
+      'updated_at': now,
+    });
+
+    await db.insert('notes', {
+      'title': 'Meeting Notes',
+      'content': 'Important points from today\'s meeting',
+      'user_id': user2,
+      'created_at': now,
+      'updated_at': now,
     });
   }
 
   /// Handle database upgrades
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Handle migrations here if needed
+    if (oldVersion < 2) {
+      // Migration from version 1 to 2: Add new tables
+      // Create categories table
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS categories (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL UNIQUE,
+          color TEXT,
+          created_at TEXT NOT NULL
+        )
+      ''');
+
+      // Add category_id and priority columns to todos
+      try {
+        await db.execute('ALTER TABLE todos ADD COLUMN category_id INTEGER');
+        await db.execute('ALTER TABLE todos ADD COLUMN priority INTEGER DEFAULT 0');
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS todos_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            completed INTEGER NOT NULL DEFAULT 0,
+            category_id INTEGER,
+            priority INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (category_id) REFERENCES categories(id)
+          )
+        ''');
+        await db.execute('''
+          INSERT INTO todos_new (id, title, completed, created_at)
+          SELECT id, title, completed, created_at FROM todos
+        ''');
+        await db.execute('DROP TABLE todos');
+        await db.execute('ALTER TABLE todos_new RENAME TO todos');
+      } catch (e) {
+        // Columns might already exist, ignore
+      }
+
+      // Create users table
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT NOT NULL UNIQUE,
+          email TEXT NOT NULL,
+          role TEXT DEFAULT 'user',
+          created_at TEXT NOT NULL
+        )
+      ''');
+
+      // Create notes table
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS notes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL,
+          content TEXT,
+          user_id INTEGER,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+      ''');
+
+      // Insert sample data only if tables are empty
+      final now = DateTime.now().toIso8601String();
+      
+      // Check if categories table is empty before inserting
+      final categoryCount = await db.rawQuery('SELECT COUNT(*) as count FROM categories');
+      if ((categoryCount.first['count'] as int) == 0) {
+        await db.insert('categories', {
+          'name': 'Work',
+          'color': '#FF5722',
+          'created_at': now,
+        });
+        await db.insert('categories', {
+          'name': 'Personal',
+          'color': '#2196F3',
+          'created_at': now,
+        });
+        await db.insert('categories', {
+          'name': 'Shopping',
+          'color': '#4CAF50',
+          'created_at': now,
+        });
+      }
+
+      // Check if users table is empty before inserting
+      final userCount = await db.rawQuery('SELECT COUNT(*) as count FROM users');
+      if ((userCount.first['count'] as int) == 0) {
+        final user1 = await db.insert('users', {
+          'username': 'admin',
+          'email': 'admin@example.com',
+          'role': 'admin',
+          'created_at': now,
+        });
+        final user2 = await db.insert('users', {
+          'username': 'john_doe',
+          'email': 'john@example.com',
+          'role': 'user',
+          'created_at': now,
+        });
+
+        // Insert notes only if users were inserted
+        await db.insert('notes', {
+          'title': 'Project Ideas',
+          'content': 'List of project ideas for the next quarter',
+          'user_id': user1,
+          'created_at': now,
+          'updated_at': now,
+        });
+
+        await db.insert('notes', {
+          'title': 'Meeting Notes',
+          'content': 'Important points from today\'s meeting',
+          'user_id': user2,
+          'created_at': now,
+          'updated_at': now,
+        });
+      }
+    }
   }
 
   /// Get database instance
