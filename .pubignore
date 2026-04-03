@@ -11,3 +11,7 @@ example/web/
 example/build/
 example/test/
 
+# Exclude non-essential files
+*.png
+.DS_Store
+

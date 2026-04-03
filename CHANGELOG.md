@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-04-03
+
+### Added
+- **MySQL Workbench-style tab system**: Tables and queries open as independent tabs in a unified tab bar
+- **Multiple tables open simultaneously**: Each table gets its own tab with independent state
+- **Dark mode**: Toggle with Ctrl+D, persisted to localStorage
+- **Sidebar table search**: Filter tables by name with Ctrl+K
+- **Table row count badges**: Row counts shown next to each table in the sidebar
+- **Click-to-sort columns**: Click column headers to sort ascending/descending
+- **NULL value styling**: NULL values displayed in italic gray, distinct from empty strings
+- **Toast notifications**: Elegant toasts replace browser alerts
+- **Loading spinner**: Visual feedback during data operations
+- **Destructive query protection**: Confirmation dialog for DROP, DELETE without WHERE, TRUNCATE
+- **Keyboard shortcuts**: Ctrl+Enter (run query), Ctrl+T (new query tab), Ctrl+W (close tab), ? (help)
+- **SQL autocomplete**: Table names, column names, SQL keywords, and functions with dropdown
+- **Right-click context menu**: Copy column names, row data (JSON/CSV/TSV), cell values, column data
+- **Double-click cell to copy**: Quick-copy any cell value
+- **Row detail panel**: Click row number to view all fields in a slide-over panel
+- **Export JSON**: New JSON export alongside CSV
+- **Run selected text**: Select part of a query to execute only that portion
+- **Tab key indentation**: 4-space indent in query editor
+- **Resizable sidebar**: Drag handle to resize
+- **Breadcrumb navigation**: Shows current database and table context
+- **Data/Structure toggle per tab**: Each table tab has its own Data/Structure sub-view
+- **Welcome screen**: Feature cards and keyboard shortcut hints for new users
+- **Zebra-striped rows**: Alternating row colors for readability
+- **Auto-refresh on DML**: Table data and list refresh after INSERT/UPDATE/DELETE/CREATE/DROP
+
+### Changed
+- Complete UI redesign with modern color scheme and improved typography
+- Tabs are now dynamic (open/close) instead of fixed Data/Structure/Query tabs
+- Connection status badge shows text ("Connected"/"Disconnected") alongside indicator
+
 ## [1.0.8] - 2026-01-12
 
 ### Added

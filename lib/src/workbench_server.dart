@@ -10,6 +10,8 @@ import 'api_handlers.dart';
 /// Singleton workbench server that manages multiple databases
 class WorkbenchServer {
   static WorkbenchServer? _instance;
+
+  /// Returns the singleton [WorkbenchServer] instance
   static WorkbenchServer get instance {
     _instance ??= WorkbenchServer._();
     return _instance!;
@@ -2311,13 +2313,21 @@ function fmtNum(n) { if (n >= 1000000) return (n/1000000).toFixed(1)+'M'; if (n 
   }
 }
 
-/// Information about a registered database
+/// Information about a registered database in the workbench
 class DatabaseInfo {
+  /// Unique identifier for the database
   final String id;
+
+  /// The SQLite database instance
   final Database database;
+
+  /// File system path to the database file
   final String path;
+
+  /// Display name for the database in the workbench UI
   final String name;
 
+  /// Creates a new [DatabaseInfo] instance
   DatabaseInfo({
     required this.id,
     required this.database,

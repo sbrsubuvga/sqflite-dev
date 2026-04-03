@@ -10,14 +10,19 @@ This package is **only for development use**. Add it to your `dev_dependencies`,
 
 ## Features
 
-- 🌐 Web-based workbench accessible from any device on your network
-- 📊 View and manage multiple SQLite databases simultaneously
-- 📋 Browse tables with pagination
-- 🔍 View table schemas, indexes, and CREATE statements
-- 💻 SQL query editor with syntax highlighting
-- 📤 Export data to CSV
-- 📱 Works on both mobile (iOS/Android) and desktop (Linux/Windows/macOS) platforms
-- 🔄 Real-time connection status
+- MySQL Workbench-style tab system: open multiple tables and queries as independent tabs
+- Dark mode with Ctrl+D toggle (persisted)
+- SQL autocomplete for table names, column names, keywords, and functions
+- Right-click context menu: copy column names, row data (JSON/CSV/TSV), cell values
+- Click-to-sort columns, quick filter, NULL value styling
+- Sidebar table search (Ctrl+K) with row count badges
+- Row detail slide-over panel
+- Export to CSV and JSON
+- Destructive query protection (DROP, DELETE without WHERE)
+- Resizable sidebar, breadcrumb navigation, toast notifications
+- Keyboard shortcuts: Ctrl+T (new query), Ctrl+W (close tab), Ctrl+Enter (run query)
+- Works on both mobile (iOS/Android) and desktop (Linux/Windows/macOS) platforms
+- Web-based workbench accessible from any device on your network
 
 ## Platform Compatibility
 
@@ -30,7 +35,7 @@ Add this package to your `dev_dependencies` in `pubspec.yaml`:
 
 ```yaml
 dev_dependencies:
-  sqflite_dev: ^1.0.8
+  sqflite_dev: ^2.0.0
 ```
 
 Then run:
@@ -209,27 +214,39 @@ sqflite_dev: Workbench server started!
 
 ## Workbench Features
 
-### Database Management
-- View all registered databases
-- Switch between databases using the dropdown selector
-- See database path and connection status
+### Tab-Based Workflow (MySQL Workbench Style)
+- Click any table to open it in its own tab
+- Open multiple query tabs with `Ctrl+T` or the `+` button
+- Close tabs with `Ctrl+W` or middle-click
+- Each tab has independent state (pagination, sort, filter)
+- Table tabs (blue indicator) and query tabs (green indicator) in one unified bar
 
-### Table Operations
-- **Table List**: View all tables in the left sidebar, grouped by database
-- **Table Info Tab**: 
-  - View table schema (columns, types, constraints)
-  - See indexes
-  - View CREATE TABLE statement
-- **Table Data Tab**:
-  - Browse table data with pagination (10, 25, 50, 100 rows per page)
-  - Sort columns by clicking headers
-  - Export data to CSV
-- **Query Browser Tab**:
-  - Execute SQL queries (SELECT, INSERT, UPDATE, DELETE)
-  - View query results
-  - Query history
-  - Export results to CSV
-  - Keyboard shortcut: `Ctrl+Enter` to execute
+### Table Tabs
+- **Data view**: Paginated grid with click-to-sort columns, quick filter, zebra striping
+- **Structure view**: Schema, indexes, CREATE TABLE statement with type/PK/NOT NULL badges
+- Toggle Data/Structure per tab independently
+- Export current page as CSV or JSON
+
+### Query Tabs
+- SQL editor with autocomplete (table names, column names, keywords, functions)
+- Execute full query or selected text with `Ctrl+Enter`
+- Tab key indentation, query history, execution time display
+- Destructive query confirmation (DROP, DELETE without WHERE, TRUNCATE)
+- Auto-refresh open table tabs after DML statements
+
+### Copy Features (Right-Click Context Menu)
+- Copy single column name or all column names
+- Copy column data for current page
+- Copy row as JSON, CSV, or tab-separated values
+- Copy cell value (also via double-click)
+
+### Additional
+- Dark mode (`Ctrl+D`) persisted to localStorage
+- Sidebar table search (`Ctrl+K`) with row count badges
+- Row detail panel (click row number)
+- Resizable sidebar with drag handle
+- Toast notifications for all operations
+- Connection status monitoring
 
 ## Security Considerations
 
