@@ -189,7 +189,8 @@ ${_getWebUICSS()}
                     <tr><td>Type in query editor</td><td>Autocomplete tables, columns, SQL</td></tr>
                     <tr><td><kbd>Tab</kbd> / <kbd>Enter</kbd></td><td>Accept autocomplete suggestion</td></tr>
                     <tr><td><kbd>&#8593;</kbd> <kbd>&#8595;</kbd></td><td>Navigate autocomplete list</td></tr>
-                    <tr><td>Double-click cell</td><td>Copy value to clipboard</td></tr>
+                    <tr><td>Double-click cell</td><td>Edit cell value inline</td></tr>
+                    <tr><td><kbd>Ctrl</kbd> + <kbd>Enter</kbd> in editor</td><td>Save large text edit</td></tr>
                     <tr><td>Click row #</td><td>View row details</td></tr>
                 </table>
             </div>
@@ -716,13 +717,42 @@ body.dark-mode .code-block { background: #0f1117; }
 /* ==================== QUERY TAB CONTENT ==================== */
 .query-tab-inner { display: flex; flex-direction: column; height: 100%; overflow-y: auto; padding: 1rem 1.25rem; }
 .query-editor-container { margin-bottom: 0.75rem; flex-shrink: 0; }
+
+/* Editor wrapper for syntax highlight overlay */
+.editor-wrapper { position: relative; background: var(--card); border-radius: var(--radius); }
+.editor-backdrop {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0; margin: 0;
+    padding: 10px; border: 1px solid transparent; border-radius: var(--radius);
+    font-family: var(--font-mono); font-size: 0.83rem; line-height: 1.5;
+    white-space: pre-wrap; word-wrap: break-word; overflow: hidden;
+    pointer-events: none; background: transparent; color: var(--text);
+}
+.editor-backdrop code { font-family: inherit; font-size: inherit; }
 .query-editor {
     width: 100%; min-height: 140px; padding: 10px; border: 1px solid var(--border);
     border-radius: var(--radius); font-family: var(--font-mono); font-size: 0.83rem;
-    resize: vertical; background: var(--card); color: var(--text); line-height: 1.5;
+    resize: vertical; background: transparent; line-height: 1.5;
     outline: none; transition: border-color 0.15s;
+    color: transparent; caret-color: var(--text); position: relative; z-index: 1;
 }
+.query-editor::placeholder { color: var(--text-secondary); }
 .query-editor:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+
+/* SQL syntax colors — matched to autocomplete badge colors */
+.sql-kw { color: #8b5cf6; font-weight: 600; }
+.sql-fn { color: #f59e0b; }
+.sql-tbl { color: #3b82f6; }
+.sql-col { color: #10b981; }
+.sql-str { color: #059669; }
+.sql-num { color: #d97706; }
+.sql-cmt { color: var(--text-secondary); font-style: italic; }
+.sql-op { color: var(--text-secondary); }
+body.dark-mode .sql-kw { color: #a78bfa; }
+body.dark-mode .sql-fn { color: #fb923c; }
+body.dark-mode .sql-tbl { color: #60a5fa; }
+body.dark-mode .sql-col { color: #4ade80; }
+body.dark-mode .sql-str { color: #34d399; }
+body.dark-mode .sql-num { color: #fbbf24; }
 
 /* Autocomplete dropdown */
 .ac-dropdown {
@@ -765,6 +795,7 @@ body.dark-mode .code-block { background: #0f1117; }
 .ctx-icon { width: 16px; text-align: center; color: var(--text-secondary); font-size: 0.78rem; flex-shrink: 0; }
 .ctx-item:hover .ctx-icon { color: var(--primary); }
 .ctx-sep { height: 1px; background: var(--border); margin: 4px 0; }
+.ctx-header { padding: 5px 14px 3px; font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
 .query-controls {
     display: flex; justify-content: space-between; align-items: center;
     margin-top: 0.4rem; gap: 0.5rem;
@@ -902,6 +933,57 @@ body.dark-mode .code-block { background: #0f1117; }
     background: var(--danger); color: white; cursor: pointer; font-size: 0.83rem; font-weight: 500;
 }
 .btn-danger:hover { background: #dc2626; }
+
+/* ==================== INLINE CELL EDIT ==================== */
+.cell-editing {
+    padding: 0 !important; position: relative;
+}
+.cell-edit-input {
+    width: 100%; padding: 5px 8px; border: 2px solid var(--primary);
+    border-radius: 3px; font-size: 0.83rem; font-family: inherit;
+    background: var(--card); color: var(--text); outline: none;
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* Edit modal for large text / JSON */
+.edit-modal-overlay {
+    display: flex; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.45); z-index: 10003;
+    justify-content: center; align-items: center;
+}
+.edit-modal {
+    background: var(--card); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg); width: 90%; max-width: 600px;
+    display: flex; flex-direction: column; max-height: 80vh;
+}
+.edit-modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--border);
+}
+.edit-modal-header h3 { font-size: 0.95rem; font-weight: 600; }
+.edit-modal-header .edit-col-name {
+    font-size: 0.78rem; color: var(--text-secondary); font-family: var(--font-mono);
+}
+.edit-modal-body { padding: 1rem 1.25rem; flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.edit-modal-textarea {
+    width: 100%; min-height: 200px; flex: 1; padding: 10px;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    font-family: var(--font-mono); font-size: 0.83rem;
+    background: var(--bg); color: var(--text); resize: vertical;
+    line-height: 1.5; outline: none;
+}
+.edit-modal-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+.edit-modal-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.75rem 1.25rem; border-top: 1px solid var(--border); gap: 0.75rem;
+}
+.edit-modal-footer .edit-info { font-size: 0.75rem; color: var(--text-secondary); }
+.edit-modal-actions { display: flex; gap: 0.5rem; }
+.btn-set-null {
+    padding: 5px 12px; border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--card); color: var(--warning); cursor: pointer; font-size: 0.8rem;
+}
+.btn-set-null:hover { background: rgba(245,158,11,0.1); }
 
 /* ==================== SCROLLBAR ==================== */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -1117,6 +1199,7 @@ async function loadTables(dbId) {
 
             item.addEventListener('click', () => openTableTab(dbId, name));
             item.addEventListener('auxclick', e => { if (e.button === 1) openTableTab(dbId, name); });
+            item.addEventListener('contextmenu', e => { e.preventDefault(); showTableCtxMenu(e.clientX, e.clientY, dbId, name); });
             sec.appendChild(item);
         });
         list.appendChild(sec);
@@ -1174,13 +1257,27 @@ function openTableTab(dbId, tableName) {
         sortDir: 'asc',
         pageData: [],
         columns: [],
-        structureLoaded: false
+        structureLoaded: false,
+        pkColumns: []
     };
     state.tabs.push(tab);
     createTabHeader(tab);
     createTablePane(tab);
     switchToTab(tab.id);
+    loadTabPk(tab.id);
     loadTabData(tab.id);
+}
+
+async function loadTabPk(tabId) {
+    const tab = state.tabs.find(t => t.id === tabId);
+    if (!tab || tab.type !== 'table') return;
+    try {
+        const res = await fetch(API_BASE + '/databases/' + tab.dbId + '/schema/' + tab.tableName);
+        const data = await res.json();
+        if (data.columns) {
+            tab.pkColumns = data.columns.filter(c => c.pk > 0).sort((a, b) => a.pk - b.pk).map(c => c.name);
+        }
+    } catch (e) {}
 }
 
 function openQueryTab() {
@@ -1358,7 +1455,15 @@ function createTablePane(tab) {
     });
     tableEl.addEventListener('dblclick', e => {
         const td = e.target.closest('td:not(.row-num-cell)');
-        if (td) copyCell(td);
+        if (!td) return;
+        // Find column and row index
+        const tr = td.closest('tr');
+        const rowIdx = Array.from(tr.parentNode.children).indexOf(tr);
+        const colIdx = Array.from(tr.children).indexOf(td) - 1; // -1 for row num col
+        const t = state.tabs.find(x => x.id === tab.id);
+        if (t && t.columns[colIdx] !== undefined && t.pageData[rowIdx] !== undefined) {
+            startCellEdit(tab.id, rowIdx, t.columns[colIdx], td);
+        }
     });
 
     // Right-click context menu for copy operations
@@ -1379,7 +1484,10 @@ function createQueryPane(tab) {
     pane.innerHTML =
         '<div class="query-tab-inner">' +
         '  <div class="query-editor-container">' +
-        '    <textarea class="query-editor" placeholder="Enter SQL query... (Ctrl+Enter to execute)"></textarea>' +
+        '    <div class="editor-wrapper">' +
+        '      <pre class="editor-backdrop" aria-hidden="true"><code></code></pre>' +
+        '      <textarea class="query-editor" placeholder="Enter SQL query... (Ctrl+Enter to execute)"></textarea>' +
+        '    </div>' +
         '    <div class="query-controls">' +
         '      <div class="query-controls-left">' +
         '        <button class="btn-primary exec-btn">Execute</button>' +
@@ -1396,10 +1504,14 @@ function createQueryPane(tab) {
         '</div>';
 
     const editor = pane.querySelector('.query-editor');
+    const backdrop = pane.querySelector('.editor-backdrop code');
     pane.querySelector('.exec-btn').addEventListener('click', () => execQuery(tab.id));
     editor.addEventListener('keydown', e => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); execQuery(tab.id); }
     });
+
+    // Syntax highlighting sync
+    setupEditorHighlight(editor, backdrop);
 
     // Attach autocomplete (handles Tab key for accept or indent)
     attachAutocomplete(editor);
@@ -1409,6 +1521,28 @@ function createQueryPane(tab) {
     attachTableContextMenu(qResultTable, () => {
         const t = state.tabs.find(x => x.id === tab.id);
         return t ? { columns: t._resultCols || [], data: t._resultData || [] } : null;
+    });
+
+    // Double-click to edit query result cells (if PK columns are in result)
+    qResultTable.addEventListener('dblclick', e => {
+        const td = e.target.closest('td');
+        if (!td) return;
+        const t = state.tabs.find(x => x.id === tab.id);
+        if (!t || !t._resultData || !t._resultData.length) { copyCell(td); return; }
+
+        const tr = td.closest('tr');
+        const rowIdx = Array.from(tr.parentNode.children).indexOf(tr);
+        const colIdx = Array.from(tr.children).indexOf(td);
+        const cols = t._resultCols || [];
+        if (cols[colIdx] === undefined || !t._resultData[rowIdx]) { copyCell(td); return; }
+
+        // Check: do we have table + PK, and are PK columns present in result?
+        if (!t._resultTable || !t._resultPk || t._resultPk.length === 0) { copyCell(td); return; }
+        const row = t._resultData[rowIdx];
+        const pkInResult = t._resultPk.every(pk => row[pk] !== undefined);
+        if (!pkInResult) { copyCell(td); return; }
+
+        startQueryResultEdit(tab.id, rowIdx, cols[colIdx], td);
     });
 
     updatePaneHistory(pane);
@@ -1652,6 +1786,8 @@ async function execQuery(tabId) {
                 const cols = Object.keys(data.data[0]);
                 tab._resultCols = cols;
                 tab._resultData = data.data;
+                // Detect table and fetch PK for inline editing
+                detectAndStorePk(tabId, query);
                 thead.innerHTML = '<tr>' + cols.map(c => '<th>' + escHtml(c) + '</th>').join('') + '</tr>';
                 tbody.innerHTML = data.data.map(row =>
                     '<tr>' + cols.map(c => {
@@ -1835,6 +1971,13 @@ function showCtxMenu(x, y, items) {
             menu.appendChild(sep);
             return;
         }
+        if (item.header) {
+            const hdr = document.createElement('div');
+            hdr.className = 'ctx-header';
+            hdr.textContent = item.label;
+            menu.appendChild(hdr);
+            return;
+        }
         const el = document.createElement('div');
         el.className = 'ctx-item';
         el.innerHTML = '<span class="ctx-icon">' + (item.icon || '') + '</span>' + escHtml(item.label);
@@ -1848,6 +1991,53 @@ function showCtxMenu(x, y, items) {
     const rect = menu.getBoundingClientRect();
     if (rect.right > window.innerWidth) menu.style.left = (x - rect.width) + 'px';
     if (rect.bottom > window.innerHeight) menu.style.top = (y - rect.height) + 'px';
+}
+
+// Right-click context menu for sidebar table items
+async function showTableCtxMenu(x, y, dbId, tableName) {
+    function copyText(text) {
+        navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard', 'success'));
+    }
+
+    // Fetch full schema for this table
+    let columns = [];
+    try {
+        const res = await fetch(API_BASE + '/databases/' + dbId + '/schema/' + tableName);
+        const data = await res.json();
+        columns = data.columns || [];
+    } catch (e) {}
+
+    const colNames = columns.map(c => c.name);
+    const colList = colNames.join(', ');
+    const placeholders = colNames.map(() => '?').join(', ');
+
+    // Generate CREATE TABLE statement
+    function genCreate() {
+        if (columns.length === 0) return 'CREATE TABLE ' + tableName + ' ();';
+        const lines = columns.map(c => {
+            let def = '  ' + c.name + ' ' + (c.type || 'TEXT');
+            if (c.pk === 1) def += ' PRIMARY KEY';
+            if (c.notnull === 1 && c.pk !== 1) def += ' NOT NULL';
+            if (c.dflt_value != null) def += ' DEFAULT ' + c.dflt_value;
+            return def;
+        });
+        return 'CREATE TABLE ' + tableName + ' (\\n' + lines.join(',\\n') + '\\n);';
+    }
+
+    const menuItems = [
+        { label: 'Refresh', icon: '\\u21BB', action: () => { loadTables(dbId); loadSchemaCache(dbId); showToast('Refreshed', 'info'); } },
+        'sep',
+        { header: true, label: 'Copy to Clipboard' },
+        { label: 'Table Name', icon: '\\uD83D\\uDCCB', action: () => copyText(tableName) },
+        { label: 'CREATE Statement', icon: '\\uD83D\\uDCCB', action: () => copyText(genCreate()) },
+        { label: 'SELECT Statement', icon: '\\uD83D\\uDCCB', action: () => copyText('SELECT ' + (colList || '*') + ' FROM ' + tableName + ';') },
+        { label: 'INSERT Statement', icon: '\\uD83D\\uDCCB', action: () => copyText('INSERT INTO ' + tableName + ' (' + colList + ') VALUES (' + placeholders + ');') },
+        { label: 'UPDATE Statement', icon: '\\uD83D\\uDCCB', action: () => copyText('UPDATE ' + tableName + ' SET ' + colNames.map(c => c + ' = ?').join(', ') + ' WHERE ;') },
+        { label: 'DELETE Statement', icon: '\\uD83D\\uDCCB', action: () => copyText('DELETE FROM ' + tableName + ' WHERE ;') },
+        'sep',
+        { label: 'DROP TABLE', icon: '\\u26A0', action: () => copyText('DROP TABLE IF EXISTS ' + tableName + ';') },
+    ];
+    showCtxMenu(x, y, menuItems);
 }
 
 // dataFn returns { columns: string[], data: object[] }
@@ -1976,6 +2166,460 @@ function updateConnectionStatus(ok) {
     else { badge.classList.add('disconnected'); text.textContent = 'Disconnected'; }
 }
 
+// ==================== SQL SYNTAX HIGHLIGHTING ====================
+const SQL_KW_SET = new Set([
+    'SELECT','FROM','WHERE','AND','OR','NOT','IN','LIKE','BETWEEN','IS','NULL',
+    'INSERT','INTO','VALUES','UPDATE','SET','DELETE','CREATE','TABLE','ALTER',
+    'DROP','INDEX','VIEW','TRIGGER','JOIN','LEFT','RIGHT','INNER','OUTER',
+    'CROSS','ON','AS','ORDER','BY','ASC','DESC','GROUP','HAVING','LIMIT',
+    'OFFSET','UNION','ALL','DISTINCT','EXISTS','CASE','WHEN','THEN','ELSE',
+    'END','CAST','PRIMARY','KEY','FOREIGN','REFERENCES','UNIQUE','CHECK',
+    'DEFAULT','AUTOINCREMENT','INTEGER','TEXT','REAL','BLOB','NUMERIC',
+    'VARCHAR','BOOLEAN','DATE','DATETIME','TIMESTAMP','IF','REPLACE',
+    'PRAGMA','BEGIN','COMMIT','ROLLBACK','TRANSACTION','EXPLAIN','VACUUM',
+    'REINDEX','ATTACH','DETACH','RENAME','ADD','COLUMN','CONSTRAINT',
+    'ABORT','CONFLICT','FAIL','IGNORE','NOT','RECURSIVE','WITH','EXCEPT',
+    'INTERSECT','NATURAL','USING','GLOB','ESCAPE','COLLATE','NOCASE',
+    'TRUE','FALSE'
+]);
+const SQL_FN_SET = new Set([
+    'COUNT','SUM','AVG','MIN','MAX','TOTAL','LENGTH','UPPER','LOWER',
+    'TRIM','LTRIM','RTRIM','SUBSTR','TYPEOF','COALESCE','NULLIF','IFNULL',
+    'INSTR','REPLACE','ROUND','ABS','RANDOM','GROUP_CONCAT','HEX','QUOTE',
+    'ZEROBLOB','PRINTF','DATE','TIME','DATETIME','JULIANDAY','STRFTIME',
+    'UNICODE','CHAR','JSON','JSON_EXTRACT','JSON_ARRAY','JSON_OBJECT',
+    'JSON_TYPE','JSON_VALID','CHANGES','LAST_INSERT_ROWID','TOTAL_CHANGES'
+]);
+
+function highlightSQL(code, tableSet, colSet) {
+    let result = '';
+    let i = 0;
+    const len = code.length;
+    while (i < len) {
+        // Single-line comment
+        if (code[i] === '-' && code[i + 1] === '-') {
+            let j = code.indexOf('\\n', i);
+            if (j === -1) j = len;
+            result += '<span class="sql-cmt">' + escHtml(code.substring(i, j)) + '</span>';
+            i = j;
+            continue;
+        }
+        // String literal
+        if (code[i] === "'") {
+            let j = i + 1;
+            while (j < len) {
+                if (code[j] === "'" && code[j + 1] === "'") { j += 2; continue; }
+                if (code[j] === "'") { j++; break; }
+                j++;
+            }
+            result += '<span class="sql-str">' + escHtml(code.substring(i, j)) + '</span>';
+            i = j;
+            continue;
+        }
+        // Word
+        if (/[a-zA-Z_]/.test(code[i])) {
+            let j = i;
+            while (j < len && /[a-zA-Z0-9_]/.test(code[j])) j++;
+            const word = code.substring(i, j);
+            const upper = word.toUpperCase();
+            const lower = word.toLowerCase();
+            if (SQL_KW_SET.has(upper)) {
+                result += '<span class="sql-kw">' + escHtml(word) + '</span>';
+            } else if (SQL_FN_SET.has(upper)) {
+                result += '<span class="sql-fn">' + escHtml(word) + '</span>';
+            } else if (tableSet && tableSet.has(lower)) {
+                result += '<span class="sql-tbl">' + escHtml(word) + '</span>';
+            } else if (colSet && colSet.has(lower)) {
+                result += '<span class="sql-col">' + escHtml(word) + '</span>';
+            } else {
+                result += escHtml(word);
+            }
+            i = j;
+            continue;
+        }
+        // Number
+        if (/[0-9]/.test(code[i])) {
+            let j = i;
+            while (j < len && /[0-9.]/.test(code[j])) j++;
+            result += '<span class="sql-num">' + escHtml(code.substring(i, j)) + '</span>';
+            i = j;
+            continue;
+        }
+        // Operators
+        if ('=<>!'.includes(code[i])) {
+            result += '<span class="sql-op">' + escHtml(code[i]) + '</span>';
+            i++;
+            continue;
+        }
+        // Any other char
+        result += escHtml(code[i]);
+        i++;
+    }
+    // Add trailing newline so pre height matches textarea
+    return result + '\\n';
+}
+
+function setupEditorHighlight(editor, backdrop) {
+    function sync() {
+        // Build table/column sets from schema cache for highlighting
+        const tableSet = new Set(Object.keys(state.schemaCache).map(t => t.toLowerCase()));
+        const colSet = new Set();
+        Object.values(state.schemaCache).forEach(cols => {
+            cols.forEach(c => colSet.add(c.toLowerCase()));
+        });
+        backdrop.innerHTML = highlightSQL(editor.value, tableSet, colSet);
+        // Sync scroll
+        const pre = backdrop.parentElement;
+        pre.scrollTop = editor.scrollTop;
+        pre.scrollLeft = editor.scrollLeft;
+    }
+    editor.addEventListener('input', sync);
+    editor.addEventListener('scroll', () => {
+        const pre = backdrop.parentElement;
+        pre.scrollTop = editor.scrollTop;
+        pre.scrollLeft = editor.scrollLeft;
+    });
+    // Initial highlight
+    sync();
+}
+
+// ==================== QUERY RESULT EDITING ====================
+async function detectAndStorePk(tabId, query) {
+    const tab = state.tabs.find(t => t.id === tabId);
+    if (!tab) return;
+    tab._resultTable = null;
+    tab._resultPk = [];
+    if (!query) return;
+
+    const upper = query.toUpperCase().trim();
+    if (!upper.startsWith('SELECT')) return;
+    if (/\\bJOIN\\b/.test(upper)) return;
+
+    // Extract table name
+    const m = query.match(/\\bFROM\\s+["\\`]?(\\w+)["\\`]?/i);
+    if (!m) return;
+    tab._resultTable = m[1];
+
+    // Fetch PK from schema API directly
+    try {
+        const res = await fetch(API_BASE + '/databases/' + state.currentDbId + '/schema/' + tab._resultTable);
+        const data = await res.json();
+        if (data.columns) {
+            tab._resultPk = data.columns.filter(c => c.pk > 0).sort((a, b) => a.pk - b.pk).map(c => c.name);
+        }
+    } catch (e) {}
+}
+
+function startQueryResultEdit(tabId, rowIdx, colName, td) {
+    const tab = state.tabs.find(t => t.id === tabId);
+    if (!tab || !tab._resultTable || !tab._resultPk || tab._resultPk.length === 0) return;
+    const row = tab._resultData[rowIdx];
+    if (!row) return;
+
+    // Check all PK columns exist in result
+    for (const pk of tab._resultPk) {
+        if (row[pk] === undefined) {
+            showToast('Cannot edit: PK column "' + pk + '" not in result', 'warning');
+            return;
+        }
+    }
+
+    const currentVal = row[colName];
+    const strVal = currentVal == null ? '' : String(currentVal);
+
+    // Large text → modal, small → inline
+    if (strVal.length > 100 || strVal.includes('\\n') || strVal.startsWith('{') || strVal.startsWith('[')) {
+        showQueryEditModal(tabId, rowIdx, colName, currentVal);
+        return;
+    }
+
+    // Inline edit
+    if (td.querySelector('.cell-edit-input')) return;
+    const original = td.innerHTML;
+    td.classList.add('cell-editing');
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'cell-edit-input';
+    input.value = currentVal == null ? '' : strVal;
+    input.placeholder = currentVal == null ? 'NULL' : '';
+    td.innerHTML = '';
+    td.appendChild(input);
+    input.focus();
+    input.select();
+
+    let saved = false;
+    const save = () => {
+        if (saved) return;
+        saved = true;
+        const newVal = input.value;
+        td.classList.remove('cell-editing');
+        const oldStr = currentVal == null ? '' : String(currentVal);
+        if (newVal === oldStr) { td.innerHTML = original; return; }
+        saveQueryResultEdit(tabId, rowIdx, colName, newVal === '' && currentVal === null ? null : newVal, td);
+    };
+    const cancel = () => { saved = true; td.classList.remove('cell-editing'); td.innerHTML = original; };
+
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); save(); }
+        if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+    });
+    input.addEventListener('blur', () => { setTimeout(() => { if (!saved) save(); }, 100); });
+}
+
+function showQueryEditModal(tabId, rowIdx, colName, currentVal) {
+    const tab = state.tabs.find(t => t.id === tabId);
+    if (!tab) return;
+    const strVal = currentVal == null ? '' : String(currentVal);
+    const isNull = currentVal == null;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'edit-modal-overlay';
+    overlay.innerHTML =
+        '<div class="edit-modal">' +
+        '  <div class="edit-modal-header"><h3>Edit Cell</h3><span class="edit-col-name">' + escHtml(colName) + '</span></div>' +
+        '  <div class="edit-modal-body"><textarea class="edit-modal-textarea"></textarea></div>' +
+        '  <div class="edit-modal-footer">' +
+        '    <span class="edit-info">' + (isNull ? 'Current: NULL' : strVal.length + ' chars') + '</span>' +
+        '    <div class="edit-modal-actions">' +
+        '      <button class="btn-set-null">Set NULL</button>' +
+        '      <button class="btn-cancel">Cancel</button>' +
+        '      <button class="btn-primary save-btn">Save</button>' +
+        '    </div>' +
+        '  </div>' +
+        '</div>';
+    const ta = overlay.querySelector('.edit-modal-textarea');
+    ta.value = strVal;
+    overlay.querySelector('.save-btn').onclick = () => { overlay.remove(); saveQueryResultEdit(tabId, rowIdx, colName, ta.value); };
+    overlay.querySelector('.btn-set-null').onclick = () => { overlay.remove(); saveQueryResultEdit(tabId, rowIdx, colName, null); };
+    overlay.querySelector('.btn-cancel').onclick = () => overlay.remove();
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    overlay.addEventListener('keydown', e => {
+        if (e.key === 'Escape') overlay.remove();
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { overlay.remove(); saveQueryResultEdit(tabId, rowIdx, colName, ta.value); }
+    });
+    document.body.appendChild(overlay);
+    ta.focus();
+    ta.selectionStart = ta.selectionEnd = ta.value.length;
+}
+
+async function saveQueryResultEdit(tabId, rowIdx, colName, newValue, td) {
+    const tab = state.tabs.find(t => t.id === tabId);
+    if (!tab || !tab._resultTable || !tab._resultPk) return;
+    const row = tab._resultData[rowIdx];
+    if (!row) return;
+
+    let setClause;
+    if (newValue === null) {
+        setClause = '"' + colName + '" = NULL';
+    } else {
+        setClause = '"' + colName + '" = ' + "'" + sqlEsc(newValue) + "'";
+    }
+
+    const whereClause = tab._resultPk.map(pk => {
+        const v = row[pk];
+        if (v == null) return '"' + pk + '" IS NULL';
+        if (typeof v === 'number') return '"' + pk + '" = ' + v;
+        return '"' + pk + '" = ' + "'" + sqlEsc(v) + "'";
+    }).join(' AND ');
+
+    const query = 'UPDATE "' + tab._resultTable + '" SET ' + setClause + ' WHERE ' + whereClause;
+
+    showLoading();
+    try {
+        const res = await fetch(API_BASE + '/databases/' + state.currentDbId + '/query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: query }),
+        });
+        const data = await res.json();
+        if (data.error) {
+            showToast('Update failed: ' + data.error, 'error');
+        } else {
+            showToast((data.affectedRows || 0) + ' row(s) updated', 'success');
+            // Re-execute the original query to refresh results
+            execQuery(tabId);
+        }
+    } catch (err) {
+        showToast('Update failed: ' + err, 'error');
+    }
+    hideLoading();
+}
+
+// ==================== INLINE CELL EDIT ====================
+function startCellEdit(tabId, rowIdx, colName, td) {
+    const tab = state.tabs.find(t => t.id === tabId);
+    if (!tab) return;
+    const row = tab.pageData[rowIdx];
+    if (row === undefined) return;
+    const currentVal = row[colName];
+    const strVal = currentVal == null ? '' : String(currentVal);
+
+    // Large text or JSON → open modal editor
+    if (strVal.length > 100 || strVal.includes('\\n') || strVal.startsWith('{') || strVal.startsWith('[')) {
+        showEditModal(tabId, rowIdx, colName, currentVal);
+        return;
+    }
+
+    // Inline edit for short values
+    if (td.querySelector('.cell-edit-input')) return; // already editing
+    const original = td.innerHTML;
+    td.classList.add('cell-editing');
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'cell-edit-input';
+    input.value = currentVal == null ? '' : strVal;
+    input.placeholder = currentVal == null ? 'NULL' : '';
+    td.innerHTML = '';
+    td.appendChild(input);
+    input.focus();
+    input.select();
+
+    let saved = false;
+    const save = () => {
+        if (saved) return;
+        saved = true;
+        const newVal = input.value;
+        td.classList.remove('cell-editing');
+        // Check if value changed
+        const oldStr = currentVal == null ? '' : String(currentVal);
+        if (newVal === oldStr) {
+            td.innerHTML = original;
+            return;
+        }
+        saveCellEdit(tabId, rowIdx, colName, newVal === '' && currentVal === null ? null : newVal, td);
+    };
+    const cancel = () => {
+        saved = true;
+        td.classList.remove('cell-editing');
+        td.innerHTML = original;
+    };
+
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); save(); }
+        if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+    });
+    input.addEventListener('blur', () => { setTimeout(() => { if (!saved) save(); }, 100); });
+}
+
+function showEditModal(tabId, rowIdx, colName, currentVal) {
+    const strVal = currentVal == null ? '' : String(currentVal);
+    const isNull = currentVal === null || currentVal === undefined;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'edit-modal-overlay';
+    overlay.innerHTML =
+        '<div class="edit-modal">' +
+        '  <div class="edit-modal-header">' +
+        '    <h3>Edit Cell</h3>' +
+        '    <span class="edit-col-name">' + escHtml(colName) + '</span>' +
+        '  </div>' +
+        '  <div class="edit-modal-body">' +
+        '    <textarea class="edit-modal-textarea"></textarea>' +
+        '  </div>' +
+        '  <div class="edit-modal-footer">' +
+        '    <span class="edit-info">' + (isNull ? 'Current: NULL' : strVal.length + ' chars') + '</span>' +
+        '    <div class="edit-modal-actions">' +
+        '      <button class="btn-set-null">Set NULL</button>' +
+        '      <button class="btn-cancel">Cancel</button>' +
+        '      <button class="btn-primary save-btn">Save</button>' +
+        '    </div>' +
+        '  </div>' +
+        '</div>';
+
+    const textarea = overlay.querySelector('.edit-modal-textarea');
+    textarea.value = strVal;
+
+    overlay.querySelector('.save-btn').onclick = () => {
+        overlay.remove();
+        saveCellEdit(tabId, rowIdx, colName, textarea.value);
+    };
+    overlay.querySelector('.btn-set-null').onclick = () => {
+        overlay.remove();
+        saveCellEdit(tabId, rowIdx, colName, null);
+    };
+    overlay.querySelector('.btn-cancel').onclick = () => overlay.remove();
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    overlay.addEventListener('keydown', e => {
+        if (e.key === 'Escape') overlay.remove();
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            overlay.remove();
+            saveCellEdit(tabId, rowIdx, colName, textarea.value);
+        }
+    });
+
+    document.body.appendChild(overlay);
+    textarea.focus();
+    // Place cursor at end
+    textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+}
+
+function sqlEsc(val) {
+    return String(val).replace(/'/g, "''");
+}
+
+async function saveCellEdit(tabId, rowIdx, colName, newValue, td) {
+    const tab = state.tabs.find(t => t.id === tabId);
+    if (!tab) return;
+    const row = tab.pageData[rowIdx];
+    if (!row) return;
+
+    // Build SET clause
+    let setClause;
+    if (newValue === null) {
+        setClause = '"' + colName + '" = NULL';
+    } else {
+        setClause = '"' + colName + '" = ' + "'" + sqlEsc(newValue) + "'";
+    }
+
+    // Build WHERE clause using primary key columns (safe & precise)
+    let whereClause;
+    if (tab.pkColumns && tab.pkColumns.length > 0) {
+        whereClause = tab.pkColumns.map(pk => {
+            const v = row[pk];
+            if (v === null || v === undefined) return '"' + pk + '" IS NULL';
+            if (typeof v === 'number') return '"' + pk + '" = ' + v;
+            return '"' + pk + '" = ' + "'" + sqlEsc(v) + "'";
+        }).join(' AND ');
+    } else {
+        // Fallback: use rowid if no PK found
+        if (row['rowid'] !== undefined) {
+            whereClause = 'rowid = ' + row['rowid'];
+        } else {
+            // Last resort: use all columns
+            whereClause = tab.columns.map(c => {
+                const v = row[c];
+                if (v === null || v === undefined) return '"' + c + '" IS NULL';
+                if (typeof v === 'number') return '"' + c + '" = ' + v;
+                return '"' + c + '" = ' + "'" + sqlEsc(v) + "'";
+            }).join(' AND ');
+        }
+    }
+
+    const query = 'UPDATE "' + tab.tableName + '" SET ' + setClause + ' WHERE ' + whereClause;
+
+    showLoading();
+    try {
+        const res = await fetch(API_BASE + '/databases/' + tab.dbId + '/query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: query }),
+        });
+        const data = await res.json();
+        if (data.error) {
+            showToast('Update failed: ' + data.error, 'error');
+        } else {
+            const affected = data.affectedRows || data.rowCount || 0;
+            showToast(affected + ' row(s) updated', 'success');
+            loadTabData(tab.id);
+        }
+    } catch (err) {
+        showToast('Update failed: ' + err, 'error');
+    }
+    hideLoading();
+}
+
 // ==================== AUTOCOMPLETE ====================
 const SQL_KEYWORDS = [
     'SELECT','FROM','WHERE','AND','OR','NOT','IN','LIKE','BETWEEN','IS','NULL',
@@ -2081,6 +2725,7 @@ function attachAutocomplete(editor) {
         editor.value = val.substring(0, wordStart) + text + val.substring(pos);
         const newPos = wordStart + text.length - (hasParen ? 1 : 0);
         editor.selectionStart = editor.selectionEnd = newPos;
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
         editor.focus();
         close();
     }

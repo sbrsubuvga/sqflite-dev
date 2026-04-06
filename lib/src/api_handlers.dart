@@ -263,18 +263,46 @@ Handler createApiHandler(WorkbenchServer server) {
 
         final stopwatch = Stopwatch()..start();
 
-        // Execute query
-        final result = await dbInfo.database.rawQuery(query);
-        stopwatch.stop();
+        // Detect query type to use correct method
+        final upperQuery = query.trimLeft().toUpperCase();
+        final isSelect = upperQuery.startsWith('SELECT') ||
+            upperQuery.startsWith('PRAGMA') ||
+            upperQuery.startsWith('EXPLAIN');
 
-        return Response.ok(
-          jsonEncode({
-            'data': result,
-            'executionTime': stopwatch.elapsedMilliseconds,
-            'rowCount': result.length,
-          }),
-          headers: {'Content-Type': 'application/json'},
-        );
+        if (isSelect) {
+          final result = await dbInfo.database.rawQuery(query);
+          stopwatch.stop();
+          return Response.ok(
+            jsonEncode({
+              'data': result,
+              'executionTime': stopwatch.elapsedMilliseconds,
+              'rowCount': result.length,
+            }),
+            headers: {'Content-Type': 'application/json'},
+          );
+        } else {
+          // Use execute for all non-SELECT statements (UPDATE, INSERT, DELETE, CREATE, DROP, ALTER)
+          await dbInfo.database.execute(query);
+          stopwatch.stop();
+
+          // Get affected rows count via changes()
+          int affected = 0;
+          try {
+            final changesResult =
+                await dbInfo.database.rawQuery('SELECT changes() as cnt');
+            affected = (changesResult.first['cnt'] as int?) ?? 0;
+          } catch (_) {}
+
+          return Response.ok(
+            jsonEncode({
+              'data': [],
+              'executionTime': stopwatch.elapsedMilliseconds,
+              'rowCount': affected,
+              'affectedRows': affected,
+            }),
+            headers: {'Content-Type': 'application/json'},
+          );
+        }
       } catch (e) {
         return Response.internalServerError(
           body: jsonEncode({'error': e.toString()}),
