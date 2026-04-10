@@ -197,11 +197,55 @@ ${_getWebUICSS()}
         </div>
     </div>
 
+    <!-- Create Index Modal -->
+    <div id="createIndexModal" class="ct-modal-overlay">
+        <div class="ct-modal" style="max-width:640px;">
+            <div class="ct-modal-header">
+                <h3>Create Index</h3>
+                <button class="btn-icon" onclick="closeCreateIndex()">&#x2715;</button>
+            </div>
+            <div class="ct-modal-body">
+                <div class="ct-form-row">
+                    <label class="ct-label">Index Name</label>
+                    <input type="text" id="ciIndexName" class="ct-input" placeholder="idx_auto" oninput="renderCiPreview()" />
+                </div>
+                <div class="ct-form-row">
+                    <label class="ct-label">Table</label>
+                    <input type="text" id="ciTableName" class="ct-input" readonly />
+                </div>
+                <div class="ct-section">
+                    <div class="ct-section-header">
+                        <span>Columns</span>
+                        <button class="btn-small" onclick="addCiColumn()">+ Add Column</button>
+                    </div>
+                    <div id="ciColumns"></div>
+                </div>
+                <div class="ct-form-row">
+                    <label class="ct-label" style="display:flex;align-items:center;gap:8px;">
+                        <input type="checkbox" id="ciUnique" onchange="renderCiPreview()" /> UNIQUE index
+                    </label>
+                </div>
+                <div class="ct-form-row">
+                    <label class="ct-label">Partial WHERE <span class="ct-hint">(optional)</span></label>
+                    <input type="text" id="ciWhere" class="ct-input" placeholder="e.g. deleted_at IS NULL" oninput="renderCiPreview()" />
+                </div>
+                <div class="ct-section">
+                    <div class="ct-section-header"><span>SQL Preview</span></div>
+                    <pre id="ciPreview" class="ct-preview"></pre>
+                </div>
+            </div>
+            <div class="ct-modal-footer">
+                <button class="btn-cancel" onclick="closeCreateIndex()">Cancel</button>
+                <button class="btn-primary" onclick="submitCreateIndex()">Create Index</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Create Table Wizard Modal -->
     <div id="createTableModal" class="ct-modal-overlay">
         <div class="ct-modal">
             <div class="ct-modal-header">
-                <h3>Create Table</h3>
+                <h3 id="ctModalTitle">Create Table</h3>
                 <button class="btn-icon" onclick="closeCreateTable()">&#x2715;</button>
             </div>
             <div class="ct-modal-body">
@@ -244,7 +288,7 @@ ${_getWebUICSS()}
             </div>
             <div class="ct-modal-footer">
                 <button class="btn-cancel" onclick="closeCreateTable()">Cancel</button>
-                <button class="btn-primary" onclick="submitCreateTable()">Create Table</button>
+                <button id="ctSubmitBtn" class="btn-primary" onclick="submitCreateTable()">Create Table</button>
             </div>
         </div>
     </div>
@@ -762,7 +806,19 @@ kbd {
 /* Structure view */
 .structure-view-inner { padding: 1.25rem; }
 .info-section { margin-bottom: 2rem; }
-.info-section h3 { margin-bottom: 0.75rem; font-size: 0.95rem; font-weight: 600; }
+.info-section h3 { font-size: 0.95rem; font-weight: 600; }
+.info-section-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 0.75rem; gap: 0.75rem;
+}
+.idx-actions-cell { text-align: right; white-space: nowrap; }
+.idx-badge {
+    display: inline-block; padding: 1px 7px; border-radius: 4px;
+    font-size: 0.7rem; font-weight: 600; margin-right: 4px;
+}
+.idx-badge.unique { background: rgba(139,92,246,0.12); color: #8b5cf6; }
+.idx-badge.auto { background: var(--bg); color: var(--text-secondary); }
+.idx-badge.partial { background: rgba(245,158,11,0.12); color: var(--warning); }
 .schema-table, .indexes-table {
     width: 100%; border-collapse: collapse; background: var(--card);
     border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; font-size: 0.83rem;
@@ -1029,7 +1085,7 @@ body.dark-mode .sql-num { color: #fbbf24; }
 /* ==================== CONFIRM DIALOG ==================== */
 .confirm-overlay {
     display: flex; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.4); z-index: 10002;
+    background: rgba(0,0,0,0.4); z-index: 10010;
     justify-content: center; align-items: center;
 }
 .confirm-dialog { background: var(--card); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); max-width: 400px; width: 90%; padding: 1.5rem; }
@@ -1134,6 +1190,23 @@ body.dark-mode .sql-num { color: #fbbf24; }
     font-size: 1rem; padding: 2px; line-height: 1;
 }
 .ct-fk-row .ct-remove-btn:hover { color: var(--danger); }
+
+/* Create Index: column rows */
+.ci-col-row {
+    display: grid;
+    grid-template-columns: 1fr 110px 28px;
+    gap: 6px; align-items: center; padding: 4px 0;
+}
+.ci-col-row select, .ci-col-row input {
+    width: 100%; padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px;
+    background: var(--card); color: var(--text); font-size: 0.78rem;
+    font-family: var(--font-mono); outline: none;
+}
+.ci-col-row .ct-remove-btn {
+    background: none; border: none; cursor: pointer; color: var(--text-secondary);
+    font-size: 1rem; padding: 2px; line-height: 1;
+}
+.ci-col-row .ct-remove-btn:hover { color: var(--danger); }
 
 .ct-preview {
     background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
@@ -1297,6 +1370,8 @@ function setupKeyboard() {
             closeRowDetail();
             closeDbInfo();
             closeCreateTable();
+            closeCreateIndex();
+            closeAlterTable();
             return;
         }
         const isInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT';
@@ -1628,8 +1703,18 @@ function createTablePane(tab) {
         '  </div>' +
         '  <div class="sub-view structure-view">' +
         '    <div class="structure-view-inner">' +
-        '      <div class="info-section"><h3>Columns</h3><div class="schema-area"></div></div>' +
-        '      <div class="info-section"><h3>Indexes</h3><div class="indexes-area"></div></div>' +
+        '      <div class="info-section">' +
+        '        <div class="info-section-head"><h3>Columns</h3>' +
+        '          <button class="btn-small alter-table-btn">Alter Table</button>' +
+        '        </div>' +
+        '        <div class="schema-area"></div>' +
+        '      </div>' +
+        '      <div class="info-section">' +
+        '        <div class="info-section-head"><h3>Indexes</h3>' +
+        '          <button class="btn-small new-index-btn">+ Create Index</button>' +
+        '        </div>' +
+        '        <div class="indexes-area"></div>' +
+        '      </div>' +
         '      <div class="info-section"><h3>CREATE TABLE Statement</h3><pre class="code-block create-stmt"></pre></div>' +
         '    </div>' +
         '  </div>' +
@@ -1932,13 +2017,42 @@ async function loadTabStructure(tabId) {
             schemaArea.innerHTML = '<p class="empty-state">No schema info</p>';
         }
 
-        // Indexes
+        // Indexes (rich rendering with badges + drop action)
         const idxArea = pane.querySelector('.indexes-area');
-        if (data.indexes && data.indexes.length > 0) {
-            let h = '<table class="indexes-table"><thead><tr><th>Name</th><th>SQL</th></tr></thead><tbody>';
-            data.indexes.forEach(idx => {
-                h += '<tr><td><strong>' + escHtml(idx.name || '') + '</strong></td>';
-                h += '<td><code>' + escHtml(idx.sql || 'N/A') + '</code></td></tr>';
+        const idxList = data.indexList || [];
+        tab._indexList = idxList;
+        tab._triggers = data.triggers || [];
+        tab._fkList = data.foreignKeys || [];
+        if (idxList.length > 0) {
+            let h = '<table class="indexes-table"><thead><tr>' +
+                    '<th>Name</th><th>Columns</th><th>Attributes</th><th>Where</th><th></th>' +
+                    '</tr></thead><tbody>';
+            idxList.forEach(idx => {
+                const isUnique = idx['unique'] == 1 || idx['unique'] === true;
+                const origin = (idx.origin || '').toString();
+                const isAuto = origin === 'pk' || origin === 'u' || origin === 'auto';
+                const isPartial = idx.partial == 1 || idx.partial === true;
+                const cols = (idx.columns || []).map(c => escHtml(c)).join(', ');
+                // Try to extract WHERE clause from the raw SQL if partial
+                let whereTxt = '-';
+                if (isPartial && idx.sql) {
+                    const m = idx.sql.match(/\\sWHERE\\s+(.+)\$/i);
+                    if (m) whereTxt = escHtml(m[1]);
+                }
+                const badges =
+                    (isUnique ? '<span class="idx-badge unique">UNIQUE</span>' : '') +
+                    (isAuto ? '<span class="idx-badge auto">AUTO</span>' : '') +
+                    (isPartial ? '<span class="idx-badge partial">PARTIAL</span>' : '');
+                const dropBtn = isAuto
+                    ? ''
+                    : '<button class="btn-small drop-index-btn" data-idx="' + escHtml(idx.name) + '">Drop</button>';
+                h += '<tr>';
+                h += '<td><strong>' + escHtml(idx.name || '') + '</strong></td>';
+                h += '<td><code>' + cols + '</code></td>';
+                h += '<td>' + (badges || '-') + '</td>';
+                h += '<td><code>' + whereTxt + '</code></td>';
+                h += '<td class="idx-actions-cell">' + dropBtn + '</td>';
+                h += '</tr>';
             });
             h += '</tbody></table>';
             idxArea.innerHTML = h;
@@ -1946,12 +2060,48 @@ async function loadTabStructure(tabId) {
             idxArea.innerHTML = '<p class="empty-state">No indexes</p>';
         }
 
+        // Wire up Drop index buttons
+        idxArea.querySelectorAll('.drop-index-btn').forEach(btn => {
+            btn.addEventListener('click', () => dropIndex(tab.dbId, tab.tableName, btn.dataset.idx, tab.id));
+        });
+
+        // Wire up the Create Index and Alter Table buttons (idempotent — re-bound on every load)
+        const newIdxBtn = pane.querySelector('.new-index-btn');
+        if (newIdxBtn) newIdxBtn.onclick = () => openCreateIndex(tab.dbId, tab.tableName, data.columns || [], tab.id);
+        const alterBtn = pane.querySelector('.alter-table-btn');
+        if (alterBtn) alterBtn.onclick = () => openAlterTable(tab.dbId, tab.tableName, data, tab.id);
+
         pane.querySelector('.create-stmt').textContent = data.createTable || 'Not available';
         tab.structureLoaded = true;
     } catch (err) {
         console.error('Structure load error:', err);
         showToast('Failed to load structure', 'error');
     }
+}
+
+// ==================== INDEX MANAGEMENT ====================
+async function dropIndex(dbId, tableName, indexName, tabId) {
+    const sql = 'DROP INDEX IF EXISTS "' + indexName + '";';
+    const ok = await confirmSqlDialog('Drop index "' + indexName + '"?', sql);
+    if (!ok) return;
+    showLoading();
+    try {
+        const res = await fetch(API_BASE + '/databases/' + dbId + '/query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: sql }),
+        });
+        const data = await res.json();
+        if (data.error) { showToast('Drop failed: ' + data.error, 'error'); }
+        else {
+            showToast('Index "' + indexName + '" dropped', 'success');
+            const tab = state.tabs.find(t => t.id === tabId);
+            if (tab) { tab.structureLoaded = false; loadTabStructure(tabId); }
+        }
+    } catch (e) {
+        showToast('Drop failed: ' + e, 'error');
+    }
+    hideLoading();
 }
 
 // ==================== QUERY EXECUTION ====================
@@ -2323,18 +2473,79 @@ const CT_TYPES = ['INTEGER','TEXT','REAL','BLOB','NUMERIC','BOOLEAN','DATE','DAT
 function openCreateTable() {
     if (!state.currentDbId) { showToast('Select a database first', 'warning'); return; }
     state.ct = {
+        mode: 'create',
         name: '',
         columns: [
             { name: 'id', type: 'INTEGER', pk: true, ai: true, nn: false, uq: false, def: '', chk: '' },
         ],
         fks: [],
     };
+    document.getElementById('ctModalTitle').textContent = 'Create Table';
+    document.getElementById('ctSubmitBtn').textContent = 'Create Table';
     document.getElementById('ctTableName').value = '';
     renderCtColumns();
     renderCtFks();
     renderCtPreview();
     document.getElementById('createTableModal').classList.add('show');
     setTimeout(() => document.getElementById('ctTableName').focus(), 50);
+}
+
+function openAlterTable(dbId, tableName, schema, tabId) {
+    if (!schema || !schema.columns) { showToast('Schema not loaded', 'error'); return; }
+
+    // Build FK rows from PRAGMA foreign_key_list result
+    const fks = (schema.foreignKeys || []).map(fk => ({
+        col: fk.from,
+        refTable: fk.table,
+        refCol: fk.to,
+        onDelete: (fk.on_delete || 'NO ACTION').toString(),
+        onUpdate: (fk.on_update || 'NO ACTION').toString(),
+        _origId: fk.id,
+    }));
+
+    // Build column rows from PRAGMA table_info
+    // Determine AUTOINCREMENT by scanning the CREATE TABLE sql
+    const createSql = (schema.createTable || '').toUpperCase();
+    const columns = schema.columns.map(c => {
+        const type = (c.type || 'TEXT').toUpperCase();
+        const isPk = c.pk === 1 || c.pk === true;
+        const colUp = (c.name || '').toUpperCase();
+        const escCol = colUp.replace(/[.*+?^\${}()|[\\]\\\\]/g, '\\\\\$&');
+        const aiRe = new RegExp('"?' + escCol + '"?\\\\s+INTEGER\\\\s+PRIMARY\\\\s+KEY\\\\s+AUTOINCREMENT');
+        const ai = isPk && aiRe.test(createSql);
+        return {
+            name: c.name || '',
+            type: type,
+            pk: isPk,
+            ai: ai,
+            nn: c.notnull === 1 && !isPk,
+            uq: false,
+            def: c.dflt_value == null ? '' : String(c.dflt_value),
+            chk: '',
+            _origName: c.name || '',
+        };
+    });
+
+    state.ct = {
+        mode: 'alter',
+        dbId: dbId,
+        tabId: tabId,
+        originalName: tableName,
+        originalColumns: JSON.parse(JSON.stringify(columns)),
+        originalFks: JSON.parse(JSON.stringify(fks)),
+        originalIndexes: (schema.indexList || []).filter(i => (i.origin || '') === 'c'),
+        originalTriggers: schema.triggers || [],
+        columns: columns,
+        fks: fks,
+    };
+
+    document.getElementById('ctModalTitle').textContent = 'Alter Table: ' + tableName;
+    document.getElementById('ctSubmitBtn').textContent = 'Apply Changes';
+    document.getElementById('ctTableName').value = tableName;
+    renderCtColumns();
+    renderCtFks();
+    renderCtPreview();
+    document.getElementById('createTableModal').classList.add('show');
 }
 
 function closeCreateTable() {
@@ -2449,6 +2660,19 @@ function renderCtFks() {
     });
 }
 
+function formatDefault(v) {
+    const s = (v == null ? '' : String(v)).trim();
+    if (!s) return '';
+    if (s.charAt(0) === '(' && s.charAt(s.length - 1) === ')') return s;
+    if (/^-?\\d+(\\.\\d+)?\$/.test(s)) return s;
+    if (/^(NULL|TRUE|FALSE|CURRENT_TIME|CURRENT_DATE|CURRENT_TIMESTAMP)\$/i.test(s)) return s.toUpperCase();
+    if (s.length >= 2 && s.charAt(0) === "'" && s.charAt(s.length - 1) === "'") return s;
+    if (s.length >= 2 && s.charAt(0) === '"' && s.charAt(s.length - 1) === '"') {
+        return "'" + s.slice(1, -1).replace(/""/g, '"').replace(/'/g, "''") + "'";
+    }
+    return "'" + s.replace(/'/g, "''") + "'";
+}
+
 function buildCreateTableSql() {
     const name = document.getElementById('ctTableName').value.trim();
     if (!name) return '';
@@ -2461,7 +2685,8 @@ function buildCreateTableSql() {
         if (c.pk && c.ai && c.type === 'INTEGER') def += ' AUTOINCREMENT';
         if (c.nn && !c.pk) def += ' NOT NULL';
         if (c.uq && !c.pk) def += ' UNIQUE';
-        if (c.def.trim()) def += ' DEFAULT ' + c.def.trim();
+        const dv = formatDefault(c.def);
+        if (dv) def += ' DEFAULT ' + dv;
         if (c.chk.trim()) def += ' CHECK (' + c.chk.trim() + ')';
         return def;
     });
@@ -2487,6 +2712,8 @@ async function submitCreateTable() {
     const validCols = state.ct.columns.filter(c => c.name.trim());
     if (validCols.length === 0) { showToast('At least one column is required', 'warning'); return; }
 
+    if (state.ct.mode === 'alter') { return submitAlterTable(); }
+
     const sql = buildCreateTableSql();
     const ok = await confirmSqlDialog('Create Table "' + name + '"?', sql);
     if (!ok) return;
@@ -2506,6 +2733,298 @@ async function submitCreateTable() {
             closeCreateTable();
             loadTables(state.currentDbId);
             loadSchemaCache(state.currentDbId);
+        }
+    } catch (e) {
+        showToast('Create failed: ' + e, 'error');
+    }
+    hideLoading();
+}
+
+function closeAlterTable() { closeCreateTable(); }
+
+// ==================== ALTER TABLE ====================
+function colDefSql(c) {
+    let def = '"' + c.name.trim() + '" ' + c.type;
+    if (c.pk) def += ' PRIMARY KEY';
+    if (c.pk && c.ai && c.type === 'INTEGER') def += ' AUTOINCREMENT';
+    if (c.nn && !c.pk) def += ' NOT NULL';
+    if (c.uq && !c.pk) def += ' UNIQUE';
+    const dv = formatDefault(c.def);
+    if (dv) def += ' DEFAULT ' + dv;
+    if (c.chk && c.chk.trim()) def += ' CHECK (' + c.chk.trim() + ')';
+    return def;
+}
+
+function buildTableBodySql(name, columns, fks) {
+    const lines = columns.map(c => '  ' + colDefSql(c));
+    (fks || []).filter(fk => fk.col && fk.refTable && fk.refCol).forEach(fk => {
+        let d = '  FOREIGN KEY ("' + fk.col + '") REFERENCES "' + fk.refTable + '" ("' + fk.refCol + '")';
+        if (fk.onDelete && fk.onDelete !== 'NO ACTION') d += ' ON DELETE ' + fk.onDelete;
+        if (fk.onUpdate && fk.onUpdate !== 'NO ACTION') d += ' ON UPDATE ' + fk.onUpdate;
+        lines.push(d);
+    });
+    return 'CREATE TABLE "' + name + '" (\\n' + lines.join(',\\n') + '\\n)';
+}
+
+function diffAlter(ct) {
+    const origName = ct.originalName;
+    const newName = document.getElementById('ctTableName').value.trim();
+    const origCols = ct.originalColumns;
+    const newCols = ct.columns.filter(c => c.name.trim());
+
+    const origByName = {};
+    origCols.forEach(c => { origByName[c._origName] = c; });
+    const newByOrig = {};
+    newCols.forEach(c => { if (c._origName) newByOrig[c._origName] = c; });
+
+    const addedCols = newCols.filter(c => !c._origName);
+    const removedCols = origCols.filter(c => !newByOrig[c._origName]);
+    const renamedCols = [];
+    const modifiedCols = [];
+
+    const normStr = s => (s == null ? '' : String(s).trim());
+    const normType = s => normStr(s).toUpperCase();
+    const normBool = v => (v === true || v === 1 || v === '1');
+
+    newCols.forEach(nc => {
+        if (!nc._origName) return;
+        const oc = origByName[nc._origName];
+        if (!oc) return;
+        if (nc.name.trim() !== oc._origName) renamedCols.push({ from: oc._origName, to: nc.name.trim() });
+
+        const changes = [];
+        if (normType(nc.type) !== normType(oc.type)) changes.push('type');
+        if (normBool(nc.pk) !== normBool(oc.pk)) changes.push('pk');
+        if (normBool(nc.ai) !== normBool(oc.ai)) changes.push('ai');
+        if (normBool(nc.nn) !== normBool(oc.nn)) changes.push('nn');
+        if (normBool(nc.uq) !== normBool(oc.uq)) changes.push('uq');
+        if (normStr(nc.def) !== normStr(oc.def)) changes.push('def');
+        if (normStr(nc.chk) !== normStr(oc.chk)) changes.push('chk');
+        if (changes.length > 0) modifiedCols.push({ name: nc._origName, changes: changes, nc: nc, oc: oc });
+    });
+
+    const fkKey = fk => JSON.stringify([fk.col, fk.refTable, fk.refCol, fk.onDelete, fk.onUpdate]);
+    const origFkSet = new Set((ct.originalFks || []).filter(fk => fk.col && fk.refTable && fk.refCol).map(fkKey));
+    const newFkSet = new Set((ct.fks || []).filter(fk => fk.col && fk.refTable && fk.refCol).map(fkKey));
+    let fksChanged = origFkSet.size !== newFkSet.size;
+    if (!fksChanged) { for (const k of origFkSet) { if (!newFkSet.has(k)) { fksChanged = true; break; } } }
+
+    const tableRenamed = newName !== origName;
+    const diff = {
+        tableRenamed, newName, addedCols, removedCols, renamedCols, modifiedCols, fksChanged,
+        requiresRecreate: removedCols.length > 0 || modifiedCols.length > 0 || fksChanged,
+        noChanges: !tableRenamed && addedCols.length === 0 && removedCols.length === 0 &&
+                   renamedCols.length === 0 && modifiedCols.length === 0 && !fksChanged,
+    };
+    console.log('[sqflite_dev diffAlter]', diff);
+    return diff;
+}
+
+function buildAlterStatements(diff) {
+    const origName = state.ct.originalName;
+    const statements = [];
+
+    if (!diff.requiresRecreate) {
+        diff.renamedCols.forEach(r => {
+            statements.push('ALTER TABLE "' + origName + '" RENAME COLUMN "' + r.from + '" TO "' + r.to + '"');
+        });
+        diff.addedCols.forEach(c => {
+            statements.push('ALTER TABLE "' + origName + '" ADD COLUMN ' + colDefSql(c));
+        });
+        if (diff.tableRenamed) {
+            statements.push('ALTER TABLE "' + origName + '" RENAME TO "' + diff.newName + '"');
+        }
+        return { kind: 'native', statements };
+    }
+
+    // Recreation path
+    const tmpName = '__sqbench_new_' + origName;
+    const finalName = diff.tableRenamed ? diff.newName : origName;
+
+    statements.push(buildTableBodySql(tmpName, state.ct.columns.filter(c => c.name.trim()), state.ct.fks));
+
+    // Copy data for columns that existed in the original schema and still exist
+    const keptNewCols = state.ct.columns
+        .filter(c => c.name.trim() && c._origName)
+        .filter(c => state.ct.originalColumns.some(oc => oc._origName === c._origName));
+    if (keptNewCols.length > 0) {
+        const targetCols = keptNewCols.map(c => '"' + c.name.trim() + '"').join(', ');
+        const sourceCols = keptNewCols.map(c => '"' + c._origName + '"').join(', ');
+        statements.push('INSERT INTO "' + tmpName + '" (' + targetCols + ') SELECT ' + sourceCols + ' FROM "' + origName + '"');
+    }
+
+    statements.push('DROP TABLE "' + origName + '"');
+    statements.push('ALTER TABLE "' + tmpName + '" RENAME TO "' + finalName + '"');
+
+    // Recreate user-defined indexes, rewriting the table name
+    (state.ct.originalIndexes || []).forEach(idx => {
+        if (!idx.sql) return;
+        const esc = origName.replace(/[.*+?^\${}()|[\\]\\\\]/g, '\\\\\$&');
+        const re = new RegExp('ON\\\\s+"?' + esc + '"?', 'i');
+        statements.push(idx.sql.replace(re, 'ON "' + finalName + '"'));
+    });
+    (state.ct.originalTriggers || []).forEach(tr => { if (tr.sql) statements.push(tr.sql); });
+
+    return { kind: 'recreate', statements };
+}
+
+async function submitAlterTable() {
+    const diff = diffAlter(state.ct);
+    if (diff.noChanges) { showToast('No changes to apply', 'warning'); return; }
+
+    const built = buildAlterStatements(diff);
+    const joined = built.statements.map(s => s.endsWith(';') ? s : s + ';').join('\\n\\n');
+    const title = built.kind === 'native'
+        ? 'Apply ' + built.statements.length + ' ALTER statement' + (built.statements.length === 1 ? '' : 's') + '?'
+        : 'Recreate "' + state.ct.originalName + '" (' + built.statements.length + ' statements, transactional)?';
+
+    const ok = await confirmSqlDialog(title, joined);
+    if (!ok) return;
+
+    showLoading();
+    try {
+        const res = await fetch(API_BASE + '/databases/' + state.ct.dbId + '/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ statements: built.statements }),
+        });
+        const data = await res.json();
+        if (data.error) {
+            showToast('Alter failed (rolled back): ' + data.error, 'error');
+        } else {
+            showToast('Table altered successfully', 'success');
+            closeCreateTable();
+            loadTables(state.currentDbId);
+            loadSchemaCache(state.currentDbId);
+            const finalName = diff.tableRenamed ? diff.newName : state.ct.originalName;
+            state.tabs.filter(t => t.type === 'table' && t.tableName === state.ct.originalName).forEach(t => {
+                t.tableName = finalName;
+                t.structureLoaded = false;
+                loadTabData(t.id);
+                if (t.subView === 'structure') loadTabStructure(t.id);
+            });
+        }
+    } catch (e) {
+        showToast('Alter failed: ' + e, 'error');
+    }
+    hideLoading();
+}
+
+// ==================== CREATE INDEX WIZARD ====================
+function openCreateIndex(dbId, tableName, tableCols, tabId) {
+    state.ci = {
+        dbId: dbId,
+        tableName: tableName,
+        tabId: tabId,
+        tableCols: (tableCols || []).map(c => c.name || c),
+        cols: [{ name: '', dir: 'ASC' }],
+    };
+    document.getElementById('ciTableName').value = tableName;
+    // Auto-suggest name — will be updated as user picks columns
+    document.getElementById('ciIndexName').value = 'idx_' + tableName + '_new';
+    document.getElementById('ciUnique').checked = false;
+    document.getElementById('ciWhere').value = '';
+    renderCiColumns();
+    renderCiPreview();
+    document.getElementById('createIndexModal').classList.add('show');
+    setTimeout(() => document.getElementById('ciIndexName').focus(), 50);
+}
+
+function closeCreateIndex() {
+    document.getElementById('createIndexModal').classList.remove('show');
+}
+
+function addCiColumn() {
+    state.ci.cols.push({ name: '', dir: 'ASC' });
+    renderCiColumns();
+    autoNameCi();
+    renderCiPreview();
+}
+
+function removeCiColumn(i) {
+    state.ci.cols.splice(i, 1);
+    if (state.ci.cols.length === 0) state.ci.cols.push({ name: '', dir: 'ASC' });
+    renderCiColumns();
+    autoNameCi();
+    renderCiPreview();
+}
+
+function updateCiCol(i, field, value) {
+    state.ci.cols[i][field] = value;
+    autoNameCi();
+    renderCiPreview();
+}
+
+function autoNameCi() {
+    // Only auto-fill if the user hasn't customized the name
+    const inp = document.getElementById('ciIndexName');
+    if (!inp) return;
+    const current = inp.value;
+    const picked = state.ci.cols.map(c => c.name).filter(n => n);
+    const expected = 'idx_' + state.ci.tableName + (picked.length ? '_' + picked.join('_') : '_new');
+    // Replace only if it looks like a previously-auto-generated name
+    if (current.startsWith('idx_' + state.ci.tableName + '_')) {
+        inp.value = expected;
+    }
+}
+
+function renderCiColumns() {
+    const container = document.getElementById('ciColumns');
+    container.innerHTML = '';
+    state.ci.cols.forEach((c, i) => {
+        const opts = '<option value="">-- select --</option>' +
+            state.ci.tableCols.map(n =>
+                '<option value="' + escHtml(n) + '"' + (n === c.name ? ' selected' : '') + '>' + escHtml(n) + '</option>'
+            ).join('');
+        const row = document.createElement('div');
+        row.className = 'ci-col-row';
+        row.innerHTML =
+            '<select onchange="updateCiCol(' + i + ', \\'name\\', this.value)">' + opts + '</select>' +
+            '<select onchange="updateCiCol(' + i + ', \\'dir\\', this.value)">' +
+                '<option value="ASC"' + (c.dir === 'ASC' ? ' selected' : '') + '>ASC</option>' +
+                '<option value="DESC"' + (c.dir === 'DESC' ? ' selected' : '') + '>DESC</option>' +
+            '</select>' +
+            '<button class="ct-remove-btn" title="Remove" onclick="removeCiColumn(' + i + ')">&#x2715;</button>';
+        container.appendChild(row);
+    });
+}
+
+function buildCreateIndexSql() {
+    const name = document.getElementById('ciIndexName').value.trim();
+    const unique = document.getElementById('ciUnique').checked;
+    const where = document.getElementById('ciWhere').value.trim();
+    const picked = state.ci.cols.filter(c => c.name);
+    if (!name || picked.length === 0) return '';
+    const colsSql = picked.map(c => '"' + c.name + '" ' + c.dir).join(', ');
+    let sql = 'CREATE ' + (unique ? 'UNIQUE ' : '') + 'INDEX "' + name + '" ON "' + state.ci.tableName + '" (' + colsSql + ')';
+    if (where) sql += ' WHERE ' + where;
+    return sql + ';';
+}
+
+function renderCiPreview() {
+    const sql = buildCreateIndexSql();
+    document.getElementById('ciPreview').textContent = sql || '-- Fill in name and at least one column';
+}
+
+async function submitCreateIndex() {
+    const sql = buildCreateIndexSql();
+    if (!sql) { showToast('Name and at least one column required', 'warning'); return; }
+    const ok = await confirmSqlDialog('Create Index?', sql);
+    if (!ok) return;
+    showLoading();
+    try {
+        const res = await fetch(API_BASE + '/databases/' + state.ci.dbId + '/query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: sql }),
+        });
+        const data = await res.json();
+        if (data.error) { showToast('Create failed: ' + data.error, 'error'); }
+        else {
+            showToast('Index created', 'success');
+            closeCreateIndex();
+            const tab = state.tabs.find(t => t.id === state.ci.tabId);
+            if (tab) { tab.structureLoaded = false; loadTabStructure(state.ci.tabId); }
         }
     } catch (e) {
         showToast('Create failed: ' + e, 'error');

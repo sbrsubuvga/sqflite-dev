@@ -209,22 +209,59 @@ Handler createApiHandler(WorkbenchServer server) {
         final tableInfo =
             await dbInfo.database.rawQuery('PRAGMA table_info("$tableName")');
 
+        // Foreign keys for this table
+        final fkList = await dbInfo.database
+            .rawQuery('PRAGMA foreign_key_list("$tableName")');
+
         // Get CREATE TABLE statement
         final createTable = await dbInfo.database.rawQuery(
           "SELECT sql FROM sqlite_master WHERE type='table' AND name='$tableName'",
         );
 
-        // Get indexes
+        // Get indexes (raw SQL from sqlite_master)
         final indexes = await dbInfo.database.rawQuery(
           "SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name='$tableName'",
+        );
+
+        // Enriched index metadata via PRAGMA index_list + index_info
+        final indexList = await dbInfo.database
+            .rawQuery('PRAGMA index_list("$tableName")');
+        final enrichedIndexes = <Map<String, Object?>>[];
+        for (final idx in indexList) {
+          final idxName = idx['name'] as String? ?? '';
+          final info =
+              await dbInfo.database.rawQuery('PRAGMA index_info("$idxName")');
+          String? sql;
+          for (final r in indexes) {
+            if (r['name'] == idxName) {
+              sql = r['sql'] as String?;
+              break;
+            }
+          }
+          enrichedIndexes.add({
+            'name': idxName,
+            'unique': idx['unique'],
+            'origin': idx['origin'],
+            'partial': idx['partial'],
+            'columns': info.map((c) => c['name']).toList(),
+            'sql': sql,
+          });
+        }
+
+        // Triggers (needed for Alter Table recreation path)
+        final triggers = await dbInfo.database.rawQuery(
+          "SELECT name, sql FROM sqlite_master WHERE type='trigger' AND tbl_name='$tableName'",
         );
 
         return Response.ok(
           jsonEncode({
             'columns': tableInfo,
+            'foreignKeys': fkList,
             'createTable':
                 createTable.isNotEmpty ? createTable.first['sql'] : null,
             'indexes': indexes,
+            'indexList': enrichedIndexes,
+            'triggers': triggers,
           }),
           headers: {'Content-Type': 'application/json'},
         );
@@ -256,6 +293,62 @@ Handler createApiHandler(WorkbenchServer server) {
           jsonEncode({'indexes': indexes}),
           headers: {'Content-Type': 'application/json'},
         );
+      } catch (e) {
+        return Response.internalServerError(
+          body: jsonEncode({'error': e.toString()}),
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
+    }
+
+    // Execute a batch of SQL statements inside a transaction
+    final batchMatch =
+        RegExp(r'^api/databases/([^/]+)/batch$').firstMatch(path);
+    if (method == 'POST' && batchMatch != null) {
+      final dbId = batchMatch.group(1)!;
+      final dbInfo = server.getDatabase(dbId);
+      if (dbInfo == null) {
+        return Response.notFound(jsonEncode({'error': 'Database not found'}));
+      }
+      try {
+        final body = await request.readAsString();
+        final json = jsonDecode(body) as Map<String, dynamic>;
+        final statements = (json['statements'] as List?)?.cast<String>();
+        if (statements == null || statements.isEmpty) {
+          return Response.badRequest(
+            body: jsonEncode({'error': 'statements array is required'}),
+            headers: {'Content-Type': 'application/json'},
+          );
+        }
+
+        final stopwatch = Stopwatch()..start();
+        try {
+          await dbInfo.database.transaction((txn) async {
+            for (final stmt in statements) {
+              final s = stmt.trim();
+              if (s.isEmpty) continue;
+              await txn.execute(s);
+            }
+          });
+          stopwatch.stop();
+          return Response.ok(
+            jsonEncode({
+              'ok': true,
+              'executed': statements.length,
+              'executionTime': stopwatch.elapsedMilliseconds,
+            }),
+            headers: {'Content-Type': 'application/json'},
+          );
+        } catch (e) {
+          stopwatch.stop();
+          return Response.ok(
+            jsonEncode({
+              'error': e.toString(),
+              'executionTime': stopwatch.elapsedMilliseconds,
+            }),
+            headers: {'Content-Type': 'application/json'},
+          );
+        }
       } catch (e) {
         return Response.internalServerError(
           body: jsonEncode({'error': e.toString()}),
