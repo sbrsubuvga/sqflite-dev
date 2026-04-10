@@ -646,6 +646,9 @@ kbd {
     font-weight: 500; transition: all 0.15s;
 }
 .btn-small:hover { background: var(--hover); border-color: var(--text-secondary); }
+.refresh-btn { display: inline-flex; align-items: center; gap: 5px; }
+.refresh-btn .refresh-icon { font-size: 1rem; line-height: 1; display: inline-block; transition: transform 0.4s ease; }
+.refresh-btn:hover .refresh-icon { transform: rotate(180deg); color: var(--primary); }
 
 /* Sub-views */
 .table-tab-body { flex: 1; overflow: hidden; position: relative; }
@@ -1382,6 +1385,7 @@ function createTablePane(tab) {
         '      <button class="sub-view-btn active" data-view="data">Data</button>' +
         '      <button class="sub-view-btn" data-view="structure">Structure</button>' +
         '    </div>' +
+        '    <button class="btn-small refresh-btn" title="Refresh data"><span class="refresh-icon">&#8635;</span> Refresh</button>' +
         '  </div>' +
         '  <div class="toolbar-section data-controls-section">' +
         '    <div class="data-controls">' +
@@ -1439,6 +1443,14 @@ function createTablePane(tab) {
         pane.querySelectorAll('.data-view tbody tr').forEach(row => {
             row.style.display = (!q || row.textContent.toLowerCase().includes(q)) ? '' : 'none';
         });
+    });
+
+    // Refresh
+    pane.querySelector('.refresh-btn').addEventListener('click', () => {
+        loadTabData(tab.id);
+        if (tab.structureLoaded) { tab.structureLoaded = false; loadTabStructure(tab.id); }
+        if (state.currentDbId) loadTableCounts(state.currentDbId, [tab.tableName]);
+        showToast('Refreshed', 'info');
     });
 
     // Export
