@@ -925,7 +925,18 @@ body.dark-mode .sql-num { color: #fbbf24; }
     display: block; margin-top: 0.5rem; padding: 8px; background: var(--bg);
     border-radius: 4px; font-family: var(--font-mono); font-size: 0.78rem; overflow-x: auto;
 }
-.confirm-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+.confirm-actions { display: flex; gap: 0.75rem; justify-content: flex-end; align-items: center; }
+.sql-confirm-dialog { max-width: 560px; }
+.sql-confirm-title { color: var(--primary) !important; }
+.sql-confirm-msg { margin-bottom: 0.5rem !important; }
+.sql-confirm-code {
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 10px 12px; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.5;
+    max-height: 180px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+    color: var(--text); margin: 0 0 1.25rem 0;
+}
+.btn-copy-sql { margin-right: auto; }
+.btn-apply-sql { background: var(--primary); color: white; border: none; }
 .btn-cancel {
     padding: 6px 16px; border: 1px solid var(--border); border-radius: var(--radius);
     background: var(--card); color: var(--text); cursor: pointer; font-size: 0.83rem;
@@ -1863,6 +1874,41 @@ function confirmDialog(title, msg, code) {
     });
 }
 
+// Show SQL preview for cell edits with copy + confirm actions
+function confirmSqlDialog(title, query) {
+    return new Promise(resolve => {
+        const ov = document.createElement('div');
+        ov.className = 'confirm-overlay';
+        ov.innerHTML =
+            '<div class="confirm-dialog sql-confirm-dialog">' +
+            '  <h3 class="sql-confirm-title">' + escHtml(title) + '</h3>' +
+            '  <p class="sql-confirm-msg">Review the query before applying the change:</p>' +
+            '  <pre class="sql-confirm-code"></pre>' +
+            '  <div class="confirm-actions">' +
+            '    <button class="btn-cancel">Cancel</button>' +
+            '    <button class="btn-small btn-copy-sql">&#128203; Copy</button>' +
+            '    <button class="btn-primary btn-apply-sql">Apply</button>' +
+            '  </div>' +
+            '</div>';
+        ov.querySelector('.sql-confirm-code').textContent = query;
+        const done = (ok) => { ov.remove(); document.removeEventListener('keydown', onKey); resolve(ok); };
+        const onKey = (e) => {
+            if (e.key === 'Escape') done(false);
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') done(true);
+        };
+        ov.querySelector('.btn-cancel').onclick = () => done(false);
+        ov.querySelector('.btn-apply-sql').onclick = () => done(true);
+        ov.querySelector('.btn-copy-sql').onclick = (e) => {
+            e.stopPropagation();
+            navigator.clipboard.writeText(query).then(() => showToast('Query copied', 'success'));
+        };
+        ov.addEventListener('click', e => { if (e.target === ov) done(false); });
+        document.addEventListener('keydown', onKey);
+        document.body.appendChild(ov);
+        ov.querySelector('.btn-apply-sql').focus();
+    });
+}
+
 function updateAllHistories() {
     document.querySelectorAll('.workspace-pane').forEach(pane => {
         if (pane.querySelector('.history-list')) updatePaneHistory(pane);
@@ -2437,6 +2483,9 @@ async function saveQueryResultEdit(tabId, rowIdx, colName, newValue, td) {
 
     const query = 'UPDATE "' + tab._resultTable + '" SET ' + setClause + ' WHERE ' + whereClause;
 
+    const ok = await confirmSqlDialog('Apply Update?', query);
+    if (!ok) return;
+
     showLoading();
     try {
         const res = await fetch(API_BASE + '/databases/' + state.currentDbId + '/query', {
@@ -2610,6 +2659,9 @@ async function saveCellEdit(tabId, rowIdx, colName, newValue, td) {
     }
 
     const query = 'UPDATE "' + tab.tableName + '" SET ' + setClause + ' WHERE ' + whereClause;
+
+    const ok = await confirmSqlDialog('Apply Update?', query);
+    if (!ok) return;
 
     showLoading();
     try {
