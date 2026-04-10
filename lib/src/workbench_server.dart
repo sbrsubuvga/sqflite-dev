@@ -197,6 +197,68 @@ ${_getWebUICSS()}
         </div>
     </div>
 
+    <!-- Create Table Wizard Modal -->
+    <div id="createTableModal" class="ct-modal-overlay">
+        <div class="ct-modal">
+            <div class="ct-modal-header">
+                <h3>Create Table</h3>
+                <button class="btn-icon" onclick="closeCreateTable()">&#x2715;</button>
+            </div>
+            <div class="ct-modal-body">
+                <div class="ct-form-row">
+                    <label class="ct-label">Table Name</label>
+                    <input type="text" id="ctTableName" class="ct-input" placeholder="e.g. users" oninput="renderCtPreview()" />
+                </div>
+
+                <div class="ct-section">
+                    <div class="ct-section-header">
+                        <span>Columns</span>
+                        <button class="btn-small" onclick="addCtColumn()">+ Add Column</button>
+                    </div>
+                    <div class="ct-columns-header">
+                        <div class="ct-col-name">Name</div>
+                        <div class="ct-col-type">Type</div>
+                        <div class="ct-col-flag" title="Primary Key">PK</div>
+                        <div class="ct-col-flag" title="Auto Increment">AI</div>
+                        <div class="ct-col-flag" title="Not Null">NN</div>
+                        <div class="ct-col-flag" title="Unique">UQ</div>
+                        <div class="ct-col-default">Default</div>
+                        <div class="ct-col-check">Check</div>
+                        <div class="ct-col-actions"></div>
+                    </div>
+                    <div id="ctColumns"></div>
+                </div>
+
+                <div class="ct-section">
+                    <div class="ct-section-header">
+                        <span>Foreign Keys <span class="ct-hint">(single-column)</span></span>
+                        <button class="btn-small" onclick="addCtFk()">+ Add FK</button>
+                    </div>
+                    <div id="ctFks"></div>
+                </div>
+
+                <div class="ct-section">
+                    <div class="ct-section-header"><span>SQL Preview</span></div>
+                    <pre id="ctPreview" class="ct-preview"></pre>
+                </div>
+            </div>
+            <div class="ct-modal-footer">
+                <button class="btn-cancel" onclick="closeCreateTable()">Cancel</button>
+                <button class="btn-primary" onclick="submitCreateTable()">Create Table</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Database Info Slide-Over -->
+    <div id="dbInfoPanel" class="row-detail-panel">
+        <div class="row-detail-header">
+            <h3>Database Info</h3>
+            <button class="btn-icon" onclick="closeDbInfo()">&#x2715;</button>
+        </div>
+        <div id="dbInfoContent" class="row-detail-content"></div>
+    </div>
+    <div id="dbInfoBackdrop" class="row-detail-backdrop" onclick="closeDbInfo()"></div>
+
     <!-- Row Detail Slide-Over -->
     <div id="rowDetailPanel" class="row-detail-panel">
         <div class="row-detail-header">
@@ -230,6 +292,13 @@ ${_getWebUICSS()}
                 </select>
                 <span class="database-info" id="databaseInfo"></span>
                 <div class="header-actions">
+                    <button id="dbInfoBtn" class="btn-icon" title="Database Info">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="16" x2="12" y2="12"/>
+                            <line x1="12" y1="8" x2="12.01" y2="8"/>
+                        </svg>
+                    </button>
                     <button id="darkModeToggle" class="btn-icon" title="Toggle Dark Mode (Ctrl+D)">
                         <svg id="sunIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
                             <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
@@ -253,7 +322,10 @@ ${_getWebUICSS()}
             <aside class="sidebar" id="sidebar">
                 <div class="sidebar-header">
                     <h2>Tables</h2>
-                    <button id="refreshTables" class="btn-icon" title="Refresh tables">&#8635;</button>
+                    <div class="sidebar-header-actions">
+                        <button id="newTableBtn" class="btn-icon" title="Create Table">+</button>
+                        <button id="refreshTables" class="btn-icon" title="Refresh tables">&#8635;</button>
+                    </div>
                 </div>
                 <div class="sidebar-search">
                     <input type="text" id="tableSearch" placeholder="Filter tables... (Ctrl+K)" class="search-input" />
@@ -460,6 +532,8 @@ body {
     font-size: 0.85rem; font-weight: 600; text-transform: uppercase;
     letter-spacing: 0.05em; color: var(--text-secondary);
 }
+.sidebar-header-actions { display: flex; gap: 4px; align-items: center; }
+#newTableBtn { font-size: 1.2rem; font-weight: 600; line-height: 1; }
 .sidebar-search { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .search-input {
     width: 100%; padding: 6px 10px; border: 1px solid var(--border);
@@ -909,6 +983,46 @@ body.dark-mode .sql-num { color: #fbbf24; }
     font-size: 0.72rem; font-weight: 600; color: var(--text-secondary);
     text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;
 }
+
+/* Database Info panel */
+.db-info-section { margin-bottom: 1.25rem; }
+.db-info-section-title {
+    font-size: 0.7rem; font-weight: 700; color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.5rem;
+    padding-bottom: 4px; border-bottom: 1px solid var(--border);
+}
+.db-info-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 0; font-size: 0.85rem; gap: 10px; min-height: 28px;
+}
+.db-info-row .label { color: var(--text-secondary); flex-shrink: 0; }
+.db-info-row .value {
+    color: var(--text); font-family: var(--font-mono); font-size: 0.8rem;
+    text-align: right; word-break: break-all;
+}
+.db-info-row .value-path { font-size: 0.72rem; }
+.db-info-row .edit-btn {
+    background: none; border: none; cursor: pointer; padding: 2px 4px;
+    color: var(--text-secondary); font-size: 0.75rem; margin-left: 4px;
+}
+.db-info-row .edit-btn:hover { color: var(--primary); }
+.db-info-row select.mini-select {
+    background: var(--card); border: 1px solid var(--border); border-radius: 4px;
+    padding: 3px 6px; font-size: 0.78rem; color: var(--text);
+    font-family: var(--font-mono); cursor: pointer;
+}
+.db-info-row .toggle-pill {
+    display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px;
+    border-radius: 12px; font-size: 0.72rem; font-weight: 600;
+    border: 1px solid var(--border); cursor: pointer; background: var(--bg);
+    color: var(--text-secondary);
+}
+.db-info-row .toggle-pill.on { background: rgba(16,185,129,0.12); color: var(--success); border-color: rgba(16,185,129,0.3); }
+.db-info-row .version-edit-input {
+    width: 70px; padding: 2px 6px; font-size: 0.8rem;
+    font-family: var(--font-mono); border: 1px solid var(--primary);
+    border-radius: 4px; background: var(--card); color: var(--text); text-align: right;
+}
 .row-detail-value { font-size: 0.88rem; word-break: break-all; white-space: pre-wrap; }
 .row-detail-value.null-val { color: var(--text-secondary); font-style: italic; opacity: 0.6; }
 
@@ -937,6 +1051,96 @@ body.dark-mode .sql-num { color: #fbbf24; }
 }
 .btn-copy-sql { margin-right: auto; }
 .btn-apply-sql { background: var(--primary); color: white; border: none; }
+
+/* ==================== CREATE TABLE WIZARD ==================== */
+.ct-modal-overlay {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5); z-index: 10005;
+    justify-content: center; align-items: flex-start; padding: 3vh 2vw;
+}
+.ct-modal-overlay.show { display: flex; }
+.ct-modal {
+    background: var(--card); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+    width: 100%; max-width: 960px; max-height: 94vh; display: flex; flex-direction: column;
+    border: 1px solid var(--border);
+}
+.ct-modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.ct-modal-header h3 { font-size: 1.05rem; font-weight: 600; }
+.ct-modal-body { flex: 1; overflow-y: auto; padding: 1rem 1.25rem; }
+.ct-modal-footer {
+    display: flex; gap: 0.75rem; justify-content: flex-end;
+    padding: 0.75rem 1.25rem; border-top: 1px solid var(--border); flex-shrink: 0;
+}
+.ct-form-row { margin-bottom: 1rem; }
+.ct-label {
+    display: block; font-size: 0.72rem; font-weight: 600; color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;
+}
+.ct-input {
+    width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--card); color: var(--text); font-size: 0.88rem; outline: none;
+    transition: border-color 0.15s;
+}
+.ct-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+.ct-section { margin-bottom: 1.25rem; }
+.ct-section-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 0.5rem; font-size: 0.8rem; font-weight: 600; color: var(--text);
+}
+.ct-hint { color: var(--text-secondary); font-weight: 400; font-size: 0.75rem; margin-left: 4px; }
+
+/* Column rows grid: name type PK AI NN UQ default check actions */
+.ct-columns-header, .ct-col-row {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 32px 32px 32px 32px 1fr 1fr 28px;
+    gap: 6px; align-items: center; padding: 4px 0;
+}
+.ct-columns-header {
+    font-size: 0.68rem; font-weight: 600; color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 6px 0; border-bottom: 1px solid var(--border);
+}
+.ct-col-flag { text-align: center; }
+.ct-col-actions { text-align: center; }
+.ct-col-row input[type="text"], .ct-col-row select {
+    width: 100%; padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px;
+    background: var(--card); color: var(--text); font-size: 0.78rem;
+    font-family: var(--font-mono); outline: none;
+}
+.ct-col-row input[type="text"]:focus, .ct-col-row select:focus { border-color: var(--primary); }
+.ct-col-row input[type="checkbox"] { cursor: pointer; width: 15px; height: 15px; }
+.ct-col-row .ct-remove-btn {
+    background: none; border: none; cursor: pointer; color: var(--text-secondary);
+    font-size: 1rem; padding: 2px; line-height: 1;
+}
+.ct-col-row .ct-remove-btn:hover { color: var(--danger); }
+
+/* FK rows grid: col ref-table ref-col on-delete on-update remove */
+.ct-fk-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 28px;
+    gap: 6px; align-items: center; padding: 4px 0;
+}
+.ct-fk-row select, .ct-fk-row input[type="text"] {
+    width: 100%; padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px;
+    background: var(--card); color: var(--text); font-size: 0.78rem;
+    font-family: var(--font-mono); outline: none;
+}
+.ct-fk-row .ct-remove-btn {
+    background: none; border: none; cursor: pointer; color: var(--text-secondary);
+    font-size: 1rem; padding: 2px; line-height: 1;
+}
+.ct-fk-row .ct-remove-btn:hover { color: var(--danger); }
+
+.ct-preview {
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px; font-family: var(--font-mono); font-size: 0.8rem;
+    line-height: 1.5; color: var(--text); white-space: pre-wrap; word-break: break-word;
+    max-height: 200px; overflow-y: auto; margin: 0;
+}
 .btn-cancel {
     padding: 6px 16px; border: 1px solid var(--border); border-radius: var(--radius);
     background: var(--card); color: var(--text); cursor: pointer; font-size: 0.83rem;
@@ -1075,8 +1279,10 @@ function setupListeners() {
     document.getElementById('refreshTables').addEventListener('click', () => {
         if (state.currentDbId) { loadTables(state.currentDbId); showToast('Refreshed', 'info'); }
     });
+    document.getElementById('newTableBtn').addEventListener('click', openCreateTable);
     document.getElementById('addTabBtn').addEventListener('click', () => openQueryTab());
     document.getElementById('darkModeToggle').addEventListener('click', toggleDark);
+    document.getElementById('dbInfoBtn').addEventListener('click', showDbInfo);
     document.getElementById('shortcutsBtn').addEventListener('click', () => {
         document.getElementById('shortcutsModal').style.display = 'flex';
     });
@@ -1089,6 +1295,8 @@ function setupKeyboard() {
         if (e.key === 'Escape') {
             document.getElementById('shortcutsModal').style.display = 'none';
             closeRowDetail();
+            closeDbInfo();
+            closeCreateTable();
             return;
         }
         const isInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT';
@@ -1990,6 +2198,321 @@ function closeRowDetail() {
     document.getElementById('rowDetailBackdrop').classList.remove('show');
 }
 
+// ==================== DATABASE INFO PANEL ====================
+function fmtBytes(n) {
+    if (n == null || n === 0) return '-';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let i = 0, v = n;
+    while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+    return v.toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
+}
+
+async function showDbInfo() {
+    if (!state.currentDbId) { showToast('No database selected', 'warning'); return; }
+    document.getElementById('dbInfoPanel').classList.add('show');
+    document.getElementById('dbInfoBackdrop').classList.add('show');
+    await renderDbInfo();
+}
+
+function closeDbInfo() {
+    document.getElementById('dbInfoPanel').classList.remove('show');
+    document.getElementById('dbInfoBackdrop').classList.remove('show');
+}
+
+async function renderDbInfo() {
+    const content = document.getElementById('dbInfoContent');
+    content.innerHTML = '<p class="empty-state">Loading...</p>';
+    try {
+        const res = await fetch(API_BASE + '/databases/' + state.currentDbId + '/info');
+        const d = await res.json();
+        state._dbInfo = d;
+
+        const row = (label, value, extra) => {
+            return '<div class="db-info-row"><span class="label">' + label + '</span><span class="value">' +
+                   (value == null ? '-' : value) + '</span>' + (extra || '') + '</div>';
+        };
+
+        const fkOn = d.foreignKeys == 1 || d.foreignKeys === true;
+        const fkPill = '<button class="toggle-pill ' + (fkOn ? 'on' : '') + '" onclick="toggleDbPragma(\\'foreign_keys\\', ' + (fkOn ? 0 : 1) + ')">' + (fkOn ? 'ON' : 'OFF') + '</button>';
+
+        const jm = (d.journalMode || '').toString().toUpperCase();
+        const jmSelect = '<select class="mini-select" onchange="setJournalMode(this.value)">' +
+            ['DELETE','TRUNCATE','PERSIST','MEMORY','WAL','OFF'].map(m =>
+                '<option value="' + m + '"' + (m === jm ? ' selected' : '') + '>' + m + '</option>'
+            ).join('') + '</select>';
+
+        const userVerId = 'userVerVal_' + Date.now();
+        const userVerRow = '<div class="db-info-row"><span class="label">User Version</span>' +
+            '<span class="value" id="' + userVerId + '">' + (d.userVersion == null ? '0' : d.userVersion) + '</span>' +
+            '<button class="edit-btn" title="Edit user_version" onclick="editUserVersion(' + (d.userVersion || 0) + ')">&#9998;</button></div>';
+
+        let html = '';
+        html += '<div class="db-info-section">';
+        html += '  <div class="db-info-section-title">Identity</div>';
+        html += row('Name', escHtml(d.name || '-'));
+        html += row('ID', '<span class="value-path">' + escHtml(d.id || '-') + '</span>');
+        html += row('Path', '<span class="value-path">' + escHtml(d.path || '-') + '</span>');
+        html += '</div>';
+
+        html += '<div class="db-info-section">';
+        html += '  <div class="db-info-section-title">Versions</div>';
+        html += userVerRow;
+        html += row('Schema Version', d.schemaVersion == null ? '-' : d.schemaVersion);
+        html += row('SQLite Version', escHtml(d.sqliteVersion || '-'));
+        html += '</div>';
+
+        html += '<div class="db-info-section">';
+        html += '  <div class="db-info-section-title">Storage</div>';
+        html += row('File Size', fmtBytes(d.size));
+        html += row('Page Size', d.pageSize == null ? '-' : (d.pageSize + ' B'));
+        html += row('Page Count', d.pageCount == null ? '-' : d.pageCount.toLocaleString());
+        html += row('Tables', d.tableCount == null ? '-' : d.tableCount);
+        html += row('Encoding', escHtml(String(d.encoding || '-')));
+        html += '</div>';
+
+        html += '<div class="db-info-section">';
+        html += '  <div class="db-info-section-title">Pragmas</div>';
+        html += '<div class="db-info-row"><span class="label">Foreign Keys</span><span class="value"></span>' + fkPill + '</div>';
+        html += '<div class="db-info-row"><span class="label">Journal Mode</span><span class="value"></span>' + jmSelect + '</div>';
+        html += row('Auto Vacuum', d.autoVacuum == null ? '-' : d.autoVacuum);
+        html += '</div>';
+
+        content.innerHTML = html;
+    } catch (e) {
+        content.innerHTML = '<p class="empty-state">Failed to load info: ' + escHtml(String(e)) + '</p>';
+    }
+}
+
+function editUserVersion(current) {
+    const newVal = prompt('Set user_version:', String(current));
+    if (newVal == null) return;
+    const n = parseInt(newVal, 10);
+    if (Number.isNaN(n) || n < 0) { showToast('Invalid version number', 'error'); return; }
+    runPragmaWithConfirm('PRAGMA user_version = ' + n, 'Update user_version?');
+}
+
+function toggleDbPragma(name, value) {
+    runPragmaWithConfirm('PRAGMA ' + name + ' = ' + value, 'Toggle ' + name + '?');
+}
+
+function setJournalMode(mode) {
+    runPragmaWithConfirm('PRAGMA journal_mode = ' + mode, 'Change journal_mode to ' + mode + '?');
+}
+
+async function runPragmaWithConfirm(query, title) {
+    const ok = await confirmSqlDialog(title, query);
+    if (!ok) { renderDbInfo(); return; }
+    try {
+        const res = await fetch(API_BASE + '/databases/' + state.currentDbId + '/query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: query }),
+        });
+        const data = await res.json();
+        if (data.error) { showToast(data.error, 'error'); }
+        else { showToast('Updated', 'success'); }
+    } catch (e) {
+        showToast('Failed: ' + e, 'error');
+    }
+    renderDbInfo();
+}
+
+// ==================== CREATE TABLE WIZARD ====================
+const CT_TYPES = ['INTEGER','TEXT','REAL','BLOB','NUMERIC','BOOLEAN','DATE','DATETIME'];
+
+function openCreateTable() {
+    if (!state.currentDbId) { showToast('Select a database first', 'warning'); return; }
+    state.ct = {
+        name: '',
+        columns: [
+            { name: 'id', type: 'INTEGER', pk: true, ai: true, nn: false, uq: false, def: '', chk: '' },
+        ],
+        fks: [],
+    };
+    document.getElementById('ctTableName').value = '';
+    renderCtColumns();
+    renderCtFks();
+    renderCtPreview();
+    document.getElementById('createTableModal').classList.add('show');
+    setTimeout(() => document.getElementById('ctTableName').focus(), 50);
+}
+
+function closeCreateTable() {
+    document.getElementById('createTableModal').classList.remove('show');
+}
+
+function addCtColumn() {
+    state.ct.columns.push({ name: '', type: 'TEXT', pk: false, ai: false, nn: false, uq: false, def: '', chk: '' });
+    renderCtColumns();
+    renderCtPreview();
+}
+
+function removeCtColumn(i) {
+    state.ct.columns.splice(i, 1);
+    renderCtColumns();
+    renderCtPreview();
+}
+
+function updateCtColumn(i, field, value) {
+    state.ct.columns[i][field] = value;
+    // PK implies not null per SQLite; AI only on INTEGER PK
+    if (field === 'pk' && !value) { state.ct.columns[i].ai = false; }
+    if (field === 'type' && value !== 'INTEGER') { state.ct.columns[i].ai = false; }
+    renderCtPreview();
+}
+
+function renderCtColumns() {
+    const container = document.getElementById('ctColumns');
+    container.innerHTML = '';
+    state.ct.columns.forEach((c, i) => {
+        const row = document.createElement('div');
+        row.className = 'ct-col-row';
+        row.innerHTML =
+            '<input type="text" placeholder="name" value="' + escHtml(c.name) + '" oninput="updateCtColumn(' + i + ', \\'name\\', this.value)" />' +
+            '<select onchange="updateCtColumn(' + i + ', \\'type\\', this.value)">' +
+                CT_TYPES.map(t => '<option value="' + t + '"' + (t === c.type ? ' selected' : '') + '>' + t + '</option>').join('') +
+            '</select>' +
+            '<input type="checkbox"' + (c.pk ? ' checked' : '') + ' onchange="updateCtColumn(' + i + ', \\'pk\\', this.checked)" />' +
+            '<input type="checkbox"' + (c.ai ? ' checked' : '') + (c.type !== 'INTEGER' || !c.pk ? ' disabled' : '') + ' onchange="updateCtColumn(' + i + ', \\'ai\\', this.checked)" />' +
+            '<input type="checkbox"' + (c.nn ? ' checked' : '') + ' onchange="updateCtColumn(' + i + ', \\'nn\\', this.checked)" />' +
+            '<input type="checkbox"' + (c.uq ? ' checked' : '') + ' onchange="updateCtColumn(' + i + ', \\'uq\\', this.checked)" />' +
+            '<input type="text" placeholder="default" value="' + escHtml(c.def) + '" oninput="updateCtColumn(' + i + ', \\'def\\', this.value)" />' +
+            '<input type="text" placeholder="check expr" value="' + escHtml(c.chk) + '" oninput="updateCtColumn(' + i + ', \\'chk\\', this.value)" />' +
+            '<button class="ct-remove-btn" title="Remove column" onclick="removeCtColumn(' + i + ')">&#x2715;</button>';
+        container.appendChild(row);
+    });
+}
+
+function addCtFk() {
+    state.ct.fks.push({ col: '', refTable: '', refCol: '', onDelete: 'NO ACTION', onUpdate: 'NO ACTION' });
+    renderCtFks();
+    renderCtPreview();
+}
+
+function removeCtFk(i) {
+    state.ct.fks.splice(i, 1);
+    renderCtFks();
+    renderCtPreview();
+}
+
+function updateCtFk(i, field, value) {
+    state.ct.fks[i][field] = value;
+    renderCtPreview();
+}
+
+function renderCtFks() {
+    const container = document.getElementById('ctFks');
+    container.innerHTML = '';
+    if (state.ct.fks.length === 0) {
+        container.innerHTML = '<p class="empty-state" style="padding:0.5rem 0;font-size:0.78rem;text-align:left;">No foreign keys defined.</p>';
+        return;
+    }
+    // Header row
+    const header = document.createElement('div');
+    header.className = 'ct-fk-row';
+    header.style.fontSize = '0.68rem';
+    header.style.fontWeight = '600';
+    header.style.color = 'var(--text-secondary)';
+    header.style.textTransform = 'uppercase';
+    header.innerHTML = '<div>Column</div><div>Ref Table</div><div>Ref Column</div><div>On Delete</div><div>On Update</div><div></div>';
+    container.appendChild(header);
+
+    const tableNames = Object.keys(state.schemaCache || {});
+    const actions = ['NO ACTION','RESTRICT','SET NULL','SET DEFAULT','CASCADE'];
+
+    state.ct.fks.forEach((fk, i) => {
+        const refCols = fk.refTable && state.schemaCache[fk.refTable] ? state.schemaCache[fk.refTable] : [];
+        const row = document.createElement('div');
+        row.className = 'ct-fk-row';
+
+        const colOpts = state.ct.columns.map(c => c.name).filter(n => n).map(n =>
+            '<option value="' + escHtml(n) + '"' + (n === fk.col ? ' selected' : '') + '>' + escHtml(n) + '</option>').join('');
+
+        const tblOpts = '<option value="">-- select --</option>' + tableNames.map(t =>
+            '<option value="' + escHtml(t) + '"' + (t === fk.refTable ? ' selected' : '') + '>' + escHtml(t) + '</option>').join('');
+
+        const refColOpts = '<option value="">-- select --</option>' + refCols.map(c =>
+            '<option value="' + escHtml(c) + '"' + (c === fk.refCol ? ' selected' : '') + '>' + escHtml(c) + '</option>').join('');
+
+        row.innerHTML =
+            '<select onchange="updateCtFk(' + i + ', \\'col\\', this.value)"><option value="">-- select --</option>' + colOpts + '</select>' +
+            '<select onchange="updateCtFk(' + i + ', \\'refTable\\', this.value); renderCtFks();">' + tblOpts + '</select>' +
+            '<select onchange="updateCtFk(' + i + ', \\'refCol\\', this.value)">' + refColOpts + '</select>' +
+            '<select onchange="updateCtFk(' + i + ', \\'onDelete\\', this.value)">' +
+                actions.map(a => '<option value="' + a + '"' + (a === fk.onDelete ? ' selected' : '') + '>' + a + '</option>').join('') +
+            '</select>' +
+            '<select onchange="updateCtFk(' + i + ', \\'onUpdate\\', this.value)">' +
+                actions.map(a => '<option value="' + a + '"' + (a === fk.onUpdate ? ' selected' : '') + '>' + a + '</option>').join('') +
+            '</select>' +
+            '<button class="ct-remove-btn" title="Remove FK" onclick="removeCtFk(' + i + ')">&#x2715;</button>';
+        container.appendChild(row);
+    });
+}
+
+function buildCreateTableSql() {
+    const name = document.getElementById('ctTableName').value.trim();
+    if (!name) return '';
+    const validCols = state.ct.columns.filter(c => c.name.trim());
+    if (validCols.length === 0) return '';
+
+    const lines = validCols.map(c => {
+        let def = '  "' + c.name.trim() + '" ' + c.type;
+        if (c.pk) def += ' PRIMARY KEY';
+        if (c.pk && c.ai && c.type === 'INTEGER') def += ' AUTOINCREMENT';
+        if (c.nn && !c.pk) def += ' NOT NULL';
+        if (c.uq && !c.pk) def += ' UNIQUE';
+        if (c.def.trim()) def += ' DEFAULT ' + c.def.trim();
+        if (c.chk.trim()) def += ' CHECK (' + c.chk.trim() + ')';
+        return def;
+    });
+
+    state.ct.fks.filter(fk => fk.col && fk.refTable && fk.refCol).forEach(fk => {
+        let def = '  FOREIGN KEY ("' + fk.col + '") REFERENCES "' + fk.refTable + '" ("' + fk.refCol + '")';
+        if (fk.onDelete && fk.onDelete !== 'NO ACTION') def += ' ON DELETE ' + fk.onDelete;
+        if (fk.onUpdate && fk.onUpdate !== 'NO ACTION') def += ' ON UPDATE ' + fk.onUpdate;
+        lines.push(def);
+    });
+
+    return 'CREATE TABLE "' + name + '" (\\n' + lines.join(',\\n') + '\\n);';
+}
+
+function renderCtPreview() {
+    const sql = buildCreateTableSql();
+    document.getElementById('ctPreview').textContent = sql || '-- Fill in table name and at least one column';
+}
+
+async function submitCreateTable() {
+    const name = document.getElementById('ctTableName').value.trim();
+    if (!name) { showToast('Table name is required', 'warning'); return; }
+    const validCols = state.ct.columns.filter(c => c.name.trim());
+    if (validCols.length === 0) { showToast('At least one column is required', 'warning'); return; }
+
+    const sql = buildCreateTableSql();
+    const ok = await confirmSqlDialog('Create Table "' + name + '"?', sql);
+    if (!ok) return;
+
+    showLoading();
+    try {
+        const res = await fetch(API_BASE + '/databases/' + state.currentDbId + '/query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: sql }),
+        });
+        const data = await res.json();
+        if (data.error) {
+            showToast('Create failed: ' + data.error, 'error');
+        } else {
+            showToast('Table "' + name + '" created', 'success');
+            closeCreateTable();
+            loadTables(state.currentDbId);
+            loadSchemaCache(state.currentDbId);
+        }
+    } catch (e) {
+        showToast('Create failed: ' + e, 'error');
+    }
+    hideLoading();
+}
+
 // ==================== COPY & CONTEXT MENU ====================
 function copyToClip(text, label) {
     if (navigator.clipboard) {
@@ -2084,6 +2607,7 @@ async function showTableCtxMenu(x, y, dbId, tableName) {
 
     const menuItems = [
         { label: 'Refresh', icon: '\\u21BB', action: () => { loadTables(dbId); loadSchemaCache(dbId); showToast('Refreshed', 'info'); } },
+        { label: 'Truncate Table', icon: '\\u26A0', action: () => truncateTable(dbId, tableName) },
         'sep',
         { header: true, label: 'Copy to Clipboard' },
         { label: 'Table Name', icon: '\\uD83D\\uDCCB', action: () => copyText(tableName) },
@@ -2096,6 +2620,43 @@ async function showTableCtxMenu(x, y, dbId, tableName) {
         { label: 'DROP TABLE', icon: '\\u26A0', action: () => copyText('DROP TABLE IF EXISTS ' + tableName + ';') },
     ];
     showCtxMenu(x, y, menuItems);
+}
+
+async function truncateTable(dbId, tableName) {
+    // Fetch row count for the warning
+    let rowCount = 0;
+    try {
+        const res = await fetch(API_BASE + '/databases/' + dbId + '/table/' + tableName + '/count');
+        rowCount = (await res.json()).count || 0;
+    } catch (_) {}
+
+    const query = 'DELETE FROM "' + tableName + '";\\nDELETE FROM sqlite_sequence WHERE name = \\'' + tableName + '\\';';
+    const title = 'Truncate "' + tableName + '" — delete ' + rowCount + ' row' + (rowCount === 1 ? '' : 's') + '?';
+    const ok = await confirmSqlDialog(title, query);
+    if (!ok) return;
+
+    showLoading();
+    try {
+        // Execute both statements in sequence
+        const run = async (q) => {
+            const res = await fetch(API_BASE + '/databases/' + dbId + '/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: q }),
+            });
+            return res.json();
+        };
+        const d1 = await run('DELETE FROM "' + tableName + '"');
+        if (d1.error) { showToast('Truncate failed: ' + d1.error, 'error'); hideLoading(); return; }
+        await run('DELETE FROM sqlite_sequence WHERE name = \\'' + tableName + '\\'');
+        showToast('Truncated ' + tableName + ' (' + rowCount + ' rows removed)', 'success');
+        loadTables(dbId);
+        // Refresh any open tabs pointing to this table
+        state.tabs.filter(t => t.type === 'table' && t.tableName === tableName).forEach(t => loadTabData(t.id));
+    } catch (e) {
+        showToast('Truncate failed: ' + e, 'error');
+    }
+    hideLoading();
 }
 
 // dataFn returns { columns: string[], data: object[] }

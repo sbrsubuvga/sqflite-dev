@@ -35,30 +35,55 @@ Handler createApiHandler(WorkbenchServer server) {
         return Response.notFound(jsonEncode({'error': 'Database not found'}));
       }
 
+      int fileSize = 0;
       try {
-        final file = File(dbInfo.path);
-        final size = await file.length();
+        fileSize = await File(dbInfo.path).length();
+      } catch (_) {}
 
-        return Response.ok(
-          jsonEncode({
-            'id': dbInfo.id,
-            'name': dbInfo.name,
-            'path': dbInfo.path,
-            'size': size,
-          }),
-          headers: {'Content-Type': 'application/json'},
-        );
-      } catch (e) {
-        return Response.ok(
-          jsonEncode({
-            'id': dbInfo.id,
-            'name': dbInfo.name,
-            'path': dbInfo.path,
-            'size': 0,
-          }),
-          headers: {'Content-Type': 'application/json'},
-        );
+      Future<Object?> pragma(String name) async {
+        try {
+          final r = await dbInfo.database.rawQuery('PRAGMA $name');
+          if (r.isEmpty) return null;
+          return r.first.values.first;
+        } catch (_) {
+          return null;
+        }
       }
+
+      String? sqliteVersion;
+      try {
+        final r =
+            await dbInfo.database.rawQuery('SELECT sqlite_version() as v');
+        sqliteVersion = r.first['v'] as String?;
+      } catch (_) {}
+
+      int tableCount = 0;
+      try {
+        final r = await dbInfo.database.rawQuery(
+          "SELECT COUNT(*) as c FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+        );
+        tableCount = (r.first['c'] as int?) ?? 0;
+      } catch (_) {}
+
+      return Response.ok(
+        jsonEncode({
+          'id': dbInfo.id,
+          'name': dbInfo.name,
+          'path': dbInfo.path,
+          'size': fileSize,
+          'tableCount': tableCount,
+          'sqliteVersion': sqliteVersion,
+          'userVersion': await pragma('user_version'),
+          'schemaVersion': await pragma('schema_version'),
+          'pageSize': await pragma('page_size'),
+          'pageCount': await pragma('page_count'),
+          'encoding': await pragma('encoding'),
+          'journalMode': await pragma('journal_mode'),
+          'foreignKeys': await pragma('foreign_keys'),
+          'autoVacuum': await pragma('auto_vacuum'),
+        }),
+        headers: {'Content-Type': 'application/json'},
+      );
     }
 
     // List tables for a database

@@ -5,16 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.1.0] - 2026-04-06
+## [2.2.0] - 2026-04-10
 
-### Added
+First release of the Schema Basics phase. Adds a Database Info panel, a visual Create Table wizard, and Truncate Table — all routed through a new SQL confirmation dialog so users can review (and copy) every generated statement before it runs.
+
+### Added — Schema Management
+- **Database Info panel**: Info icon in the header opens a slide-over showing name, path, SQLite version, `user_version`, `schema_version`, page size/count, file size, table count, encoding, and pragmas
+- **Editable `user_version`**: Pencil icon next to user_version lets you bump the schema version through the SQL confirm dialog
+- **Foreign Keys pragma toggle**: ON/OFF pill in the Database Info panel
+- **Journal Mode selector**: Dropdown for DELETE/TRUNCATE/PERSIST/MEMORY/WAL/OFF in the Database Info panel
+- **Truncate Table**: New option in the sidebar right-click context menu, showing the current row count in the warning and running `DELETE FROM table` + `DELETE FROM sqlite_sequence` through the SQL confirm dialog
+- **Create Table wizard**: New `+` button in the sidebar header opens a visual form with live SQL preview. Supports column name, type, PRIMARY KEY, AUTOINCREMENT, NOT NULL, UNIQUE, DEFAULT, CHECK, and single-column foreign keys with ON DELETE/UPDATE actions
+
+### Added — Editor & Query UX
 - **SQL syntax highlighting for table & column names**: Table names highlighted in blue, column names in green — matching autocomplete badge colors
-- **Right-click context menu on sidebar tables**: Refresh, and Copy to Clipboard options for Table Name, CREATE, SELECT, INSERT, UPDATE, DELETE, and DROP statements with full column lists
-- **DML query support**: INSERT, UPDATE, DELETE, CREATE, DROP, and ALTER statements now execute correctly with affected row count feedback
+- **SQL confirm dialog for cell edits**: Editing a cell now shows the generated UPDATE SQL in a modal with Copy-to-Clipboard and Apply/Cancel actions, so users see exactly what will run before it executes
+- **Refresh button in table toolbar**: "↻ Refresh" button next to Data/Structure tabs so Flutter app changes can be picked up without reopening the tab
+- **Sidebar table right-click menu**: Refresh, Truncate, and Copy to Clipboard options (Table Name, CREATE, SELECT, INSERT, UPDATE, DELETE, DROP statements) with full column lists
+- **DML query execution**: INSERT, UPDATE, DELETE, CREATE, DROP, and ALTER statements now execute correctly with affected row count feedback
 
 ### Fixed
-- **Query text now visible in editor**: Fixed transparent textarea overlay so syntax-highlighted text renders properly
-- **Autocomplete insert triggers highlight sync**: Picking a suggestion now immediately updates syntax coloring
+- Query text is now visible in the editor — fixed the transparent-textarea overlay so the syntax-highlighted backdrop shows through
+- Autocomplete insertion now immediately updates syntax highlighting
+- `api_handlers.dart` `/query` endpoint correctly uses `execute()` for non-SELECT statements so INSERT/UPDATE/DELETE/CREATE/DROP/ALTER actually run
 
 ## [2.0.0] - 2026-04-03
 
