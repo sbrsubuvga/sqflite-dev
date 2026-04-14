@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2026-04-14
+
+### Improved
+- Server URLs are now reprinted to the console on every hot restart, so the Local and Network addresses are always visible at the bottom of the terminal output.
+
 ## [2.3.0] - 2026-04-14
 
 ### Added
