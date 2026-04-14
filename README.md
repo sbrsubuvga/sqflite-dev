@@ -23,6 +23,7 @@ This package is **only for development use**. Add it to your `dev_dependencies`,
 - Keyboard shortcuts: Ctrl+T (new query), Ctrl+W (close tab), Ctrl+Enter (run query)
 - Works on both mobile (iOS/Android) and desktop (Linux/Windows/macOS) platforms
 - Web-based workbench accessible from any device on your network
+- In-app overlay notch to display server URLs without checking the console (Flutter only)
 
 ## Platform Compatibility
 
@@ -35,7 +36,7 @@ Add this package to your `dev_dependencies` in `pubspec.yaml`:
 
 ```yaml
 dev_dependencies:
-  sqflite_dev: ^2.2.0
+  sqflite_dev: ^2.3.0
 ```
 
 Then run:
@@ -196,6 +197,36 @@ WorkbenchHelper.autoEnable(db, webDebugPort: 3000);
 ```
 
 If the port is already in use, the server will try the next available port.
+
+### In-App Info Overlay (Flutter Only)
+
+Show the workbench server URLs directly in your running app as a small draggable notch — no need to check the console.
+
+**Step 1:** Copy `example/lib/widgets/workbench_notch.dart` into your project.
+
+**Step 2:** Register the overlay handler and enable it:
+
+```dart
+import 'package:sqflite_dev/sqflite_dev.dart';
+import 'widgets/workbench_notch.dart'; // the file you copied
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Register the overlay handler (one-time, before enableWorkbench)
+  WorkbenchServer.instance.overlayHandler = insertWorkbenchOverlay;
+
+  final db = await openDatabase('my_database.db');
+  db.enableWorkbench(
+    webDebug: !kReleaseMode,
+    webDebugInfoOverlay: !kReleaseMode, // shows the in-app notch
+  );
+
+  runApp(MyApp());
+}
+```
+
+A small notch appears at the right edge of the screen. Tap or drag it to reveal the Local and Network URLs (tap to copy). The notch is invisible when the server is not running.
 
 ## Accessing the Workbench
 
