@@ -4097,6 +4097,19 @@ function fmtNum(n) { if (n >= 1000000) return (n/1000000).toFixed(1)+'M'; if (n 
   /// Whether the HTTP server is currently running
   bool get isRunning => _server != null;
 
+  /// Callback invoked when `webDebugInfoOverlay: true` is passed to
+  /// [enableWorkbench]. Set this from your Flutter layer to wire up the
+  /// in-app notch overlay. In pure Dart this stays null and the flag is
+  /// silently ignored.
+  ///
+  /// ```dart
+  /// // In your Flutter app, before enableWorkbench():
+  /// WorkbenchServer.instance.overlayHandler = () {
+  ///   // insert overlay into the running app
+  /// };
+  /// ```
+  void Function()? overlayHandler;
+
   /// Stop the server
   Future<void> stop() async {
     await _server?.close(force: true);

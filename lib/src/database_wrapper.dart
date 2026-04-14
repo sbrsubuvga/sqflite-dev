@@ -2,9 +2,6 @@ import 'package:sqflite_common/sqlite_api.dart';
 import 'package:path/path.dart' as path;
 import 'workbench_server.dart';
 
-import '_overlay_inserter_stub.dart'
-    if (dart.library.ui) '_overlay_inserter.dart' as overlay;
-
 /// Extension on Database to enable workbench
 extension DatabaseWorkbench on Database {
   /// Enable the SQLite workbench for this database
@@ -12,7 +9,8 @@ extension DatabaseWorkbench on Database {
   /// [webDebug] - Enable workbench (default: true)
   /// [webDebugName] - Optional custom name for the database in the workbench UI
   /// [webDebugPort] - Port number for the web server (default: 8080)
-  /// [webDebugInfoOverlay] - Show an in-app notch with the server URLs (Flutter only)
+  /// [webDebugInfoOverlay] - Show an in-app notch with server URLs (Flutter only,
+  ///   requires [WorkbenchServer.instance.overlayHandler] to be set)
   ///
   /// Example:
   /// ```dart
@@ -59,9 +57,9 @@ extension DatabaseWorkbench on Database {
       name: webDebugName ?? path.basename(dbPath),
     );
 
-    // Show in-app overlay notch (Flutter only, no-op in pure Dart)
+    // Trigger in-app overlay if requested and handler is registered
     if (webDebugInfoOverlay) {
-      overlay.insertWorkbenchOverlay();
+      WorkbenchServer.instance.overlayHandler?.call();
     }
   }
 

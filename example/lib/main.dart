@@ -5,9 +5,13 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_dev/sqflite_dev.dart';
+import 'widgets/workbench_notch.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Register the Flutter overlay handler (one-time setup)
+  WorkbenchServer.instance.overlayHandler = insertWorkbenchOverlay;
 
   // Initialize database
   final dbHelper = DatabaseHelper();

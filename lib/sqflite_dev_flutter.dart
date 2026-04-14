@@ -1,26 +1,10 @@
-/// Flutter-specific widgets for [sqflite_dev].
+/// Flutter overlay support for sqflite_dev.
 ///
-/// Import this library from your Flutter app to access [SqfliteDevOverlay],
-/// an in-app draggable notch that displays the running workbench server URLs
-/// (Local and Network) without needing to check the console.
+/// Provides [registerOverlayHandler] to connect your in-app overlay widget
+/// to `enableWorkbench(webDebugInfoOverlay: true)`.
 ///
-/// ```dart
-/// import 'package:sqflite_dev/sqflite_dev.dart';
-/// import 'package:sqflite_dev/sqflite_dev_flutter.dart';
-///
-/// void main() {
-///   runApp(
-///     SqfliteDevOverlay(
-///       enabled: kDebugMode,
-///       child: MyApp(),
-///     ),
-///   );
-/// }
-/// ```
-///
-/// This library imports `package:flutter/material.dart`, so it must only be
-/// used from Flutter projects. Pure Dart consumers should continue to import
-/// `package:sqflite_dev/sqflite_dev.dart` and skip this entry-point.
+/// See `example/lib/widgets/workbench_notch.dart` for a ready-to-use
+/// Flutter overlay implementation.
 library sqflite_dev_flutter;
 
-export 'src/workbench_overlay.dart';
+export 'src/workbench_overlay.dart' show registerOverlayHandler;
