@@ -4094,6 +4094,9 @@ function fmtNum(n) { if (n >= 1000000) return (n/1000000).toFixed(1)+'M'; if (n 
   /// Get local IP address
   String? get localIp => _localIp;
 
+  /// Whether the HTTP server is currently running
+  bool get isRunning => _server != null;
+
   /// Stop the server
   Future<void> stop() async {
     await _server?.close(force: true);

@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0-dev] - unreleased
+
+### Added — In-App Workbench Overlay
+- **`webDebugInfoOverlay` parameter** on `enableWorkbench()` / `WorkbenchHelper`: pass `webDebugInfoOverlay: true` and a draggable notch automatically appears at the edge of the running app, showing the Local and Network URLs (tap-to-copy) plus registered database count. No widget wrapping required — the overlay inserts itself programmatically into the app's `Overlay`. In pure Dart contexts the flag is silently ignored.
+- **`SqfliteDevOverlay` widget** (via `package:sqflite_dev/sqflite_dev_flutter.dart`): an alternative manual widget-wrapper for users who need explicit control over placement. Most users should prefer `webDebugInfoOverlay: true` instead.
+- `WorkbenchServer.isRunning` getter so consumers (and the overlay) can tell whether the HTTP server has been started.
+
 ## [2.2.0] - 2026-04-10
 
 First release of the Schema Basics phase. Adds a Database Info panel, a visual Create Table wizard, and Truncate Table — all routed through a new SQL confirmation dialog so users can review (and copy) every generated statement before it runs.

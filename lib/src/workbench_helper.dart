@@ -29,12 +29,14 @@ class WorkbenchHelper {
     bool webDebug = true,
     int webDebugPort = 8080,
     String? webDebugName,
+    bool webDebugInfoOverlay = false,
   }) {
     if (webDebug) {
       database.enableWorkbench(
         webDebug: webDebug,
         webDebugName: webDebugName,
         webDebugPort: webDebugPort,
+        webDebugInfoOverlay: webDebugInfoOverlay,
       );
     }
   }
@@ -66,12 +68,14 @@ class WorkbenchHelper {
     bool webDebug = true,
     int webDebugPort = 8080,
     String? webDebugName,
+    bool webDebugInfoOverlay = false,
   }) {
     enableWorkbench(
       database,
       webDebug: webDebug,
       webDebugPort: webDebugPort,
       webDebugName: webDebugName,
+      webDebugInfoOverlay: webDebugInfoOverlay,
     );
   }
 }

@@ -266,6 +266,7 @@ class DatabaseHelper {
       webDebug: !kReleaseMode,
       webDebugPort: 8080,
       webDebugName: 'TodosDB',
+      webDebugInfoOverlay: !kReleaseMode,
     );
   }
 
