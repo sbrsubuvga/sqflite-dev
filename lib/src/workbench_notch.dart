@@ -320,8 +320,7 @@ class _WorkbenchNotchState extends State<WorkbenchNotch>
                 Icon(
                   isCopied ? Icons.check : Icons.copy,
                   size: 13,
-                  color:
-                      Colors.white.withValues(alpha: isCopied ? 0.8 : 0.4),
+                  color: Colors.white.withValues(alpha: isCopied ? 0.8 : 0.4),
                 ),
               ],
             ),

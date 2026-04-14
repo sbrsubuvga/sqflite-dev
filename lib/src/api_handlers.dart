@@ -224,8 +224,8 @@ Handler createApiHandler(WorkbenchServer server) {
         );
 
         // Enriched index metadata via PRAGMA index_list + index_info
-        final indexList = await dbInfo.database
-            .rawQuery('PRAGMA index_list("$tableName")');
+        final indexList =
+            await dbInfo.database.rawQuery('PRAGMA index_list("$tableName")');
         final enrichedIndexes = <Map<String, Object?>>[];
         for (final idx in indexList) {
           final idxName = idx['name'] as String? ?? '';
