@@ -7,10 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.3.0] - 2026-04-14
 
-### Added — In-App Workbench Overlay
-- **`webDebugInfoOverlay` parameter** on `enableWorkbench()` / `WorkbenchHelper`: pass `webDebugInfoOverlay: true` and a draggable notch automatically appears at the edge of the running app, showing the Local and Network URLs (tap-to-copy) plus registered database count. No widget wrapping required — the overlay inserts itself programmatically into the app's `Overlay`. In pure Dart contexts the flag is silently ignored.
-- **`SqfliteDevOverlay` widget** (via `package:sqflite_dev/sqflite_dev_flutter.dart`): an alternative manual widget-wrapper for users who need explicit control over placement. Most users should prefer `webDebugInfoOverlay: true` instead.
-- `WorkbenchServer.isRunning` getter so consumers (and the overlay) can tell whether the HTTP server has been started.
+### Added
+- `WorkbenchServer.isRunning` getter to check whether the HTTP server has been started.
+
+### Fixed
+- Port auto-increment now works correctly on macOS when the port is already in use (`SocketException.osError` check).
 
 ## [2.2.0] - 2026-04-10
 

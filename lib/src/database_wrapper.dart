@@ -9,24 +9,15 @@ extension DatabaseWorkbench on Database {
   /// [webDebug] - Enable workbench (default: true)
   /// [webDebugName] - Optional custom name for the database in the workbench UI
   /// [webDebugPort] - Port number for the web server (default: 8080)
-  /// [webDebugInfoOverlay] - Show an in-app notch with server URLs (Flutter only,
-  ///   requires [WorkbenchServer.instance.overlayHandler] to be set)
-  ///
   /// Example:
   /// ```dart
   /// final db = await openDatabase('my_db.db');
-  /// db.enableWorkbench(
-  ///   webDebug: true,
-  ///   webDebugName: 'MainDB',
-  ///   webDebugPort: 8080,
-  ///   webDebugInfoOverlay: true,
-  /// );
+  /// db.enableWorkbench(webDebug: true, webDebugName: 'MainDB', webDebugPort: 8080);
   /// ```
   void enableWorkbench({
     bool webDebug = true,
     String? webDebugName,
     int? webDebugPort,
-    bool webDebugInfoOverlay = false,
   }) {
     if (!webDebug) {
       return;
@@ -56,11 +47,6 @@ extension DatabaseWorkbench on Database {
       dbPath: dbPath,
       name: webDebugName ?? path.basename(dbPath),
     );
-
-    // Trigger in-app overlay if requested and handler is registered
-    if (webDebugInfoOverlay) {
-      WorkbenchServer.instance.overlayHandler?.call();
-    }
   }
 
   /// Generate a unique ID from database path

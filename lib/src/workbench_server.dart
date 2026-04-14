@@ -42,8 +42,7 @@ class WorkbenchServer {
     if (_server == null) {
       _startServer();
     } else {
-      print(
-          'sqflite_dev: Database "$dbId" registered. Workbench already running.');
+      _printServerInfo();
     }
   }
 
@@ -70,28 +69,38 @@ class WorkbenchServer {
       // Get network IP - wait a short moment for detection
       _localIp = await _getLocalIpAddress(_server!.address);
 
-      print('');
-      print('═══════════════════════════════════════════════════════════');
-      print('sqflite_dev: Workbench server started!');
-      print('  Local:   http://localhost:$_port');
-      if (_localIp != null) {
-        print('  Network: http://$_localIp:$_port');
-      } else {
-        print('  Network: IP not detected - check device network settings');
-        print('           Access from PC using device IP address');
-      }
-      print('═══════════════════════════════════════════════════════════');
-      print('');
+      _printServerInfo();
+
     } catch (e) {
       // Port might be in use, try next port
       if (e is SocketException &&
-          e.message.contains('Address already in use')) {
+          (e.osError?.message.contains('Address already in use') ?? false)) {
         print('sqflite_dev: Port $_port is in use, trying next port...');
         _port++;
         return _startServer();
       }
       print('sqflite_dev: Failed to start server: $e');
     }
+  }
+
+  /// Print the server URLs to the console.
+  void _printServerInfo() {
+    final localUrl = 'http://localhost:$_port';
+    final networkUrl =
+        _localIp != null ? 'http://$_localIp:$_port' : null;
+
+    print('');
+    print('═══════════════════════════════════════════════════════════');
+    print('sqflite_dev: Workbench server started!');
+    print('  Local:   $localUrl');
+    if (networkUrl != null) {
+      print('  Network: $networkUrl');
+    } else {
+      print('  Network: IP not detected - check device network settings');
+      print('           Access from PC using device IP address');
+    }
+    print('═══════════════════════════════════════════════════════════');
+    print('');
   }
 
   /// Create the shelf handler with CORS and static file serving
@@ -4096,19 +4105,6 @@ function fmtNum(n) { if (n >= 1000000) return (n/1000000).toFixed(1)+'M'; if (n 
 
   /// Whether the HTTP server is currently running
   bool get isRunning => _server != null;
-
-  /// Callback invoked when `webDebugInfoOverlay: true` is passed to
-  /// [enableWorkbench]. Set this from your Flutter layer to wire up the
-  /// in-app notch overlay. In pure Dart this stays null and the flag is
-  /// silently ignored.
-  ///
-  /// ```dart
-  /// // In your Flutter app, before enableWorkbench():
-  /// WorkbenchServer.instance.overlayHandler = () {
-  ///   // insert overlay into the running app
-  /// };
-  /// ```
-  void Function()? overlayHandler;
 
   /// Stop the server
   Future<void> stop() async {
