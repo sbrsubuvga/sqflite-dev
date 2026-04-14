@@ -70,7 +70,6 @@ class WorkbenchServer {
       _localIp = await _getLocalIpAddress(_server!.address);
 
       _printServerInfo();
-
     } catch (e) {
       // Port might be in use, try next port
       if (e is SocketException &&
@@ -86,8 +85,7 @@ class WorkbenchServer {
   /// Print the server URLs to the console.
   void _printServerInfo() {
     final localUrl = 'http://localhost:$_port';
-    final networkUrl =
-        _localIp != null ? 'http://$_localIp:$_port' : null;
+    final networkUrl = _localIp != null ? 'http://$_localIp:$_port' : null;
 
     print('');
     print('═══════════════════════════════════════════════════════════');
