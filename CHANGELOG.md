@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.3.0-dev] - unreleased
+## [2.3.0] - 2026-04-14
 
 ### Added — In-App Workbench Overlay
 - **`webDebugInfoOverlay` parameter** on `enableWorkbench()` / `WorkbenchHelper`: pass `webDebugInfoOverlay: true` and a draggable notch automatically appears at the edge of the running app, showing the Local and Network URLs (tap-to-copy) plus registered database count. No widget wrapping required — the overlay inserts itself programmatically into the app's `Overlay`. In pure Dart contexts the flag is silently ignored.

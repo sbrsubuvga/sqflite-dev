@@ -1,6 +1,6 @@
 name: sqflite_dev
 description: Web-based SQLite workbench for Flutter and pure Dart development
-version: 2.3.0-dev
+version: 2.3.0
 homepage: https://github.com/sbrsubuvga/sqflite-dev
 repository: https://github.com/sbrsubuvga/sqflite-dev
 issue_tracker: https://github.com/sbrsubuvga/sqflite-dev/issues
