@@ -4,13 +4,39 @@ import { DatabaseNode, TableNode, WorkbenchTreeProvider } from './treeProvider';
 import { DbInfoPanel, HistoryStore, SqlEditorPanel, TablePanel, WorkbenchPanel } from './webview';
 
 const CONFIG_SECTION = 'sqfliteDev';
+const ACTIVE_SERVER_KEY = 'sqfliteDev.activeServer';
+
+interface ServerConfig {
+  name: string;
+  host: string;
+  port: number;
+}
+
+function getServers(): ServerConfig[] {
+  const cfg = vscode.workspace.getConfiguration(CONFIG_SECTION);
+  const list = cfg.get<ServerConfig[]>('servers', []);
+  if (Array.isArray(list) && list.length > 0) {
+    return list
+      .filter(s => s && typeof s.host === 'string' && typeof s.port === 'number')
+      .map(s => ({ name: s.name || `${s.host}:${s.port}`, host: s.host, port: s.port }));
+  }
+  // Legacy fallback: single server from host/port
+  return [{
+    name: 'Default',
+    host: cfg.get<string>('host', 'localhost'),
+    port: cfg.get<number>('port', 8080),
+  }];
+}
 
 export function activate(context: vscode.ExtensionContext) {
   const config = () => vscode.workspace.getConfiguration(CONFIG_SECTION);
-  const host = () => config().get<string>('host', 'localhost');
-  const port = () => config().get<number>('port', 8080);
 
-  const client = new WorkbenchClient(host(), port());
+  let servers = getServers();
+  let activeName = context.workspaceState.get<string>(ACTIVE_SERVER_KEY) ?? servers[0].name;
+  const findActive = () => servers.find(s => s.name === activeName) ?? servers[0];
+
+  const active0 = findActive();
+  const client = new WorkbenchClient(active0.host, active0.port);
   const tree = new WorkbenchTreeProvider(client);
   const history = new HistoryStore(context.workspaceState);
 
@@ -25,24 +51,41 @@ export function activate(context: vscode.ExtensionContext) {
 
   let pollHandle: NodeJS.Timeout | undefined;
 
+  const serverLabel = () => servers.length > 1 ? ` · ${activeName}` : '';
+
   const updateStatus = () => {
-    if (tree.isConnected()) {
+    if (tree.isConnecting() && !tree.isConnected()) {
+      status.text = `$(sync~spin) sqflite_dev${serverLabel()}`;
+      status.tooltip = `Connecting to ${client.baseUrl}…`;
+      status.backgroundColor = undefined;
+    } else if (tree.isConnected()) {
       const n = tree.getDatabases().length;
-      status.text = `$(database) sqflite_dev · ${n} db${n === 1 ? '' : 's'}`;
+      status.text = `$(database) sqflite_dev${serverLabel()} · ${n} db${n === 1 ? '' : 's'}`;
       status.tooltip = `Connected to ${client.baseUrl}`;
       status.backgroundColor = undefined;
     } else {
-      status.text = `$(debug-disconnect) sqflite_dev`;
+      status.text = `$(debug-disconnect) sqflite_dev${serverLabel()}`;
       status.tooltip = `No workbench at ${client.baseUrl}. Click to retry.`;
       status.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
     }
     status.show();
   };
 
-  const refresh = async () => {
-    client.update(host(), port());
-    await tree.refresh();
+  const refresh = async (showReconnectToast = true) => {
+    const a = findActive();
+    client.update(a.host, a.port);
+    const { wasConnected, nowConnected } = await tree.refresh();
     updateStatus();
+    if (showReconnectToast && wasConnected && !nowConnected) {
+      const err = tree.getLastError();
+      const choice = await vscode.window.showWarningMessage(
+        `sqflite_dev disconnected from ${client.baseUrl}${err ? `: ${err}` : ''}`,
+        'Retry',
+      );
+      if (choice === 'Retry') {
+        await refresh(false);
+      }
+    }
   };
 
   const startPolling = () => {
@@ -59,6 +102,11 @@ export function activate(context: vscode.ExtensionContext) {
     treeView,
     vscode.workspace.onDidChangeConfiguration(e => {
       if (e.affectsConfiguration(CONFIG_SECTION)) {
+        servers = getServers();
+        if (!servers.some(s => s.name === activeName)) {
+          activeName = servers[0].name;
+          void context.workspaceState.update(ACTIVE_SERVER_KEY, activeName);
+        }
         void refresh();
         startPolling();
       }
@@ -154,23 +202,43 @@ export function activate(context: vscode.ExtensionContext) {
       await runDdl(client, tree, node.db.id, `ALTER TABLE ${quote(node.tableName)} RENAME TO ${quote(next.trim())}`, `Renamed to "${next.trim()}"`);
     }),
     vscode.commands.registerCommand('sqfliteDev.vacuumDb', async (node?: DatabaseNode) => {
-      const dbs = tree.getDatabases();
-      let target = node?.db;
-      if (!target) {
-        if (dbs.length === 0) return;
-        if (dbs.length === 1) target = dbs[0];
-        else {
-          const pick = await vscode.window.showQuickPick(
-            dbs.map(d => ({ label: d.name, description: d.id, db: d })),
-            { placeHolder: 'Select database to vacuum' },
-          );
-          if (!pick) return;
-          target = pick.db;
-        }
-      }
+      const target = await pickDb(tree, node, 'Select database to vacuum');
+      if (!target) return;
       const ok = await confirm(`Run VACUUM on "${target.name}"? This rewrites the file and may take a while.`, 'Vacuum');
       if (!ok) return;
       await runDdl(client, tree, target.id, 'VACUUM', `VACUUM finished on "${target.name}"`);
+    }),
+    vscode.commands.registerCommand('sqfliteDev.analyzeDb', async (node?: DatabaseNode) => {
+      const target = await pickDb(tree, node, 'Select database to analyze');
+      if (!target) return;
+      await runDdl(client, tree, target.id, 'ANALYZE', `ANALYZE finished on "${target.name}"`);
+    }),
+    vscode.commands.registerCommand('sqfliteDev.integrityCheck', async (node?: DatabaseNode) => {
+      const target = await pickDb(tree, node, 'Select database to check');
+      if (!target) return;
+      await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: `Integrity check on "${target.name}"…` },
+        async () => {
+          try {
+            const result = await client.query(target.id, 'PRAGMA integrity_check');
+            const channel = getOutputChannel();
+            channel.show(true);
+            channel.appendLine(`-- ${new Date().toISOString()} · ${target.name} · integrity_check`);
+            for (const row of result.data) {
+              channel.appendLine(String(Object.values(row)[0] ?? ''));
+            }
+            channel.appendLine('');
+            const ok = result.data.length === 1 && String(Object.values(result.data[0])[0] ?? '').toLowerCase() === 'ok';
+            if (ok) {
+              vscode.window.showInformationMessage(`sqflite_dev: "${target.name}" is OK.`);
+            } else {
+              vscode.window.showWarningMessage(`sqflite_dev: integrity issues on "${target.name}". See output panel.`);
+            }
+          } catch (e) {
+            vscode.window.showErrorMessage(`sqflite_dev: ${(e as Error).message}`);
+          }
+        },
+      );
     }),
     vscode.commands.registerCommand('sqfliteDev.filterTables', async () => {
       const current = tree.getTableFilter() ?? '';
@@ -183,6 +251,27 @@ export function activate(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand('sqfliteDev.clearTableFilter', () => {
       tree.setTableFilter(null);
+    }),
+    vscode.commands.registerCommand('sqfliteDev.switchServer', async () => {
+      if (servers.length <= 1) {
+        vscode.window.showInformationMessage(
+          'Configure `sqfliteDev.servers` in settings to add more servers.',
+        );
+        return;
+      }
+      const pick = await vscode.window.showQuickPick(
+        servers.map(s => ({
+          label: s.name,
+          description: `${s.host}:${s.port}`,
+          picked: s.name === activeName,
+          server: s,
+        })),
+        { placeHolder: 'Switch sqflite_dev server' },
+      );
+      if (!pick) return;
+      activeName = pick.server.name;
+      await context.workspaceState.update(ACTIVE_SERVER_KEY, activeName);
+      await refresh(false);
     }),
     vscode.commands.registerCommand('sqfliteDev.openSqlEditor', async (node?: DatabaseNode | TableNode) => {
       if (!tree.isConnected() || tree.getDatabases().length === 0) {
@@ -296,6 +385,25 @@ async function runSqlFromEditor(
 
 function quote(name: string): string {
   return `"${name.replace(/"/g, '""')}"`;
+}
+
+async function pickDb(
+  tree: WorkbenchTreeProvider,
+  node: DatabaseNode | undefined,
+  placeholder: string,
+): Promise<{ id: string; name: string; path: string } | undefined> {
+  if (node?.db) return node.db;
+  const dbs = tree.getDatabases();
+  if (dbs.length === 0) {
+    vscode.window.showErrorMessage('sqflite_dev: no databases connected.');
+    return undefined;
+  }
+  if (dbs.length === 1) return dbs[0];
+  const pick = await vscode.window.showQuickPick(
+    dbs.map(d => ({ label: d.name, description: d.id, db: d })),
+    { placeHolder: placeholder },
+  );
+  return pick?.db;
 }
 
 async function openSqlScratch(content: string): Promise<void> {

@@ -96,6 +96,7 @@ interface TablePanelState {
   detailMode: 'view' | 'edit' | 'insert';
   hasRowid: boolean;
   withoutRowidChecked: boolean;
+  columnWidths: Record<string, number>;
 }
 
 export class TablePanel {
@@ -146,6 +147,7 @@ export class TablePanel {
       detailMode: 'view',
       hasRowid: true,
       withoutRowidChecked: false,
+      columnWidths: {},
     };
     panel.onDidDispose(() => {
       TablePanel.panels.delete(this.key);
@@ -232,6 +234,56 @@ export class TablePanel {
       case 'export':
         await this.exportData(String(msg.format ?? 'csv') as 'csv' | 'json');
         break;
+      case 'dropIndex':
+        await this.dropIndex(String(msg.name ?? ''));
+        break;
+      case 'dropTrigger':
+        await this.dropTrigger(String(msg.name ?? ''));
+        break;
+      case 'resizeColumn': {
+        const col = String(msg.col ?? '');
+        const width = Math.max(40, Number(msg.width) || 0);
+        if (col) this.state.columnWidths[col] = width;
+        break;
+      }
+    }
+  }
+
+  private async dropIndex(name: string) {
+    if (!name) return;
+    const ok = await confirmWrite(`Drop index "${name}"?`, 'Drop');
+    if (!ok) return;
+    try {
+      const result = await this.client.query(this.state.dbId, `DROP INDEX ${quoteIdent(name)}`);
+      if (result.error) {
+        vscode.window.showErrorMessage(`sqflite_dev: ${result.error}`);
+        return;
+      }
+      vscode.window.showInformationMessage(`Index "${name}" dropped.`);
+      this.state.schema = null;
+      await this.loadSchema();
+      this.render();
+    } catch (e) {
+      vscode.window.showErrorMessage(`sqflite_dev: ${(e as Error).message}`);
+    }
+  }
+
+  private async dropTrigger(name: string) {
+    if (!name) return;
+    const ok = await confirmWrite(`Drop trigger "${name}"?`, 'Drop');
+    if (!ok) return;
+    try {
+      const result = await this.client.query(this.state.dbId, `DROP TRIGGER ${quoteIdent(name)}`);
+      if (result.error) {
+        vscode.window.showErrorMessage(`sqflite_dev: ${result.error}`);
+        return;
+      }
+      vscode.window.showInformationMessage(`Trigger "${name}" dropped.`);
+      this.state.schema = null;
+      await this.loadSchema();
+      this.render();
+    } catch (e) {
+      vscode.window.showErrorMessage(`sqflite_dev: ${(e as Error).message}`);
     }
   }
 
@@ -430,10 +482,14 @@ export class TablePanel {
     .body { padding: 12px; }
     table { border-collapse: collapse; width: 100%; font-size: 12px; font-family: var(--vscode-editor-font-family); }
     th, td { padding: 4px 8px; text-align: left; border-bottom: 1px solid var(--vscode-panel-border); white-space: nowrap; max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
-    th { position: sticky; top: 49px; background: var(--vscode-editorWidget-background); font-weight: 600; user-select: none; }
+    th { position: sticky; top: 49px; background: var(--vscode-editorWidget-background); font-weight: 600; user-select: none; position: relative; }
     th.sortable { cursor: pointer; }
     th .arrow { color: var(--vscode-descriptionForeground); margin-left: 4px; font-size: 10px; }
     th .arrow.active { color: var(--vscode-charts-blue, var(--vscode-textLink-foreground)); }
+    th .resizer { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; user-select: none; z-index: 1; }
+    th .resizer:hover, th .resizer.active { background: var(--vscode-sash-hoverBorder, var(--vscode-focusBorder)); }
+    body.col-resizing { cursor: col-resize !important; }
+    body.col-resizing * { cursor: col-resize !important; user-select: none !important; }
     tr.row { cursor: pointer; }
     tr.row:hover td { background: var(--vscode-list-hoverBackground); }
     .null { color: var(--vscode-disabledForeground); font-style: italic; }
@@ -534,6 +590,46 @@ export class TablePanel {
       });
       vscode.postMessage({ type: 'rowSave', values });
     };
+    document.querySelectorAll('button[data-drop-index]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        vscode.postMessage({ type: 'dropIndex', name: btn.dataset.dropIndex });
+      });
+    });
+    document.querySelectorAll('button[data-drop-trigger]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        e.preventDefault();
+        vscode.postMessage({ type: 'dropTrigger', name: btn.dataset.dropTrigger });
+      });
+    });
+    let resizing = null;
+    document.querySelectorAll('th .resizer').forEach(handle => {
+      handle.addEventListener('mousedown', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const th = handle.parentElement;
+        resizing = { handle, th, startX: e.clientX, startW: th.offsetWidth, col: handle.dataset.resizer, lastWidth: th.offsetWidth };
+        handle.classList.add('active');
+        document.body.classList.add('col-resizing');
+      });
+      handle.addEventListener('click', e => { e.stopPropagation(); });
+    });
+    document.addEventListener('mousemove', e => {
+      if (!resizing) return;
+      const w = Math.max(40, resizing.startW + (e.clientX - resizing.startX));
+      resizing.th.style.width = w + 'px';
+      resizing.th.style.minWidth = w + 'px';
+      resizing.th.style.maxWidth = w + 'px';
+      resizing.lastWidth = w;
+    });
+    document.addEventListener('mouseup', () => {
+      if (!resizing) return;
+      resizing.handle.classList.remove('active');
+      document.body.classList.remove('col-resizing');
+      vscode.postMessage({ type: 'resizeColumn', col: resizing.col, width: resizing.lastWidth });
+      resizing = null;
+    });
   </script>
 </body>
 </html>`;
@@ -551,7 +647,9 @@ export class TablePanel {
       const safeForSort = isSafeIdent(c);
       const cls = safeForSort ? 'sortable' : '';
       const attr = safeForSort ? ` data-sort="${escapeAttr(c)}"` : '';
-      return `<th class="${cls}"${attr}>${escapeHtml(c)}<span class="arrow${isSorted ? ' active' : ''}">${arrow}</span></th>`;
+      const w = this.state.columnWidths[c];
+      const widthStyle = w ? ` style="width:${w}px;min-width:${w}px;max-width:${w}px"` : '';
+      return `<th class="${cls}" data-col="${escapeAttr(c)}"${attr}${widthStyle}><span class="th-label">${escapeHtml(c)}</span><span class="arrow${isSorted ? ' active' : ''}">${arrow}</span><span class="resizer" data-resizer="${escapeAttr(c)}"></span></th>`;
     }).join('');
 
     const body = rows.map((r, i) => {
@@ -658,6 +756,7 @@ export class TablePanel {
       <td>${escapeHtml(i.name)}${i.unique ? ' <span class="badge nn">UNIQUE</span>' : ''}</td>
       <td>${i.columns.map(escapeHtml).join(', ')}</td>
       <td><code>${escapeHtml(i.sql ?? '')}</code></td>
+      <td>${i.origin === 'pk' || i.origin === 'u' ? '<span class="meta">auto</span>' : `<button class="danger" data-drop-index="${escapeAttr(i.name)}">Drop</button>`}</td>
     </tr>`).join('');
 
     const fks = s.foreignKeys.map(fk => `<tr>
@@ -668,7 +767,7 @@ export class TablePanel {
     </tr>`).join('');
 
     const triggers = s.triggers.map(t => `<details style="margin-bottom:8px">
-      <summary><b>${escapeHtml(t.name)}</b></summary>
+      <summary style="display:flex;align-items:center;gap:8px"><b>${escapeHtml(t.name)}</b><button class="danger" data-drop-trigger="${escapeAttr(t.name)}">Drop</button></summary>
       <pre>${escapeHtml(t.sql ?? '')}</pre>
     </details>`).join('');
 
@@ -686,7 +785,7 @@ export class TablePanel {
         </table>` : ''}
       ${s.indexList.length ? `<h3 style="margin-top:24px">Indexes</h3>
         <table>
-          <thead><tr><th>Name</th><th>Columns</th><th>SQL</th></tr></thead>
+          <thead><tr><th>Name</th><th>Columns</th><th>SQL</th><th></th></tr></thead>
           <tbody>${idx}</tbody>
         </table>` : ''}
       ${s.triggers.length ? `<h3 style="margin-top:24px">Triggers</h3>${triggers}` : ''}
@@ -828,6 +927,7 @@ async function confirmWrite(message: string, action = 'Save'): Promise<boolean> 
 }
 
 const HISTORY_KEY_PREFIX = 'sqfliteDev.history.';
+const SAVED_KEY_PREFIX = 'sqfliteDev.saved.';
 const HISTORY_LIMIT = 50;
 
 export class HistoryStore {
@@ -845,16 +945,34 @@ export class HistoryStore {
   clear(dbId: string): Thenable<void> {
     return this.memento.update(HISTORY_KEY_PREFIX + dbId, []);
   }
+  getSaved(dbId: string): string[] {
+    return this.memento.get<string[]>(SAVED_KEY_PREFIX + dbId, []);
+  }
+  addSaved(dbId: string, sql: string): Thenable<void> {
+    const trimmed = sql.trim();
+    if (!trimmed) return Promise.resolve();
+    const list = this.getSaved(dbId).filter(s => s !== trimmed);
+    list.unshift(trimmed);
+    return this.memento.update(SAVED_KEY_PREFIX + dbId, list);
+  }
+  removeSaved(dbId: string, sql: string): Thenable<void> {
+    const list = this.getSaved(dbId).filter(s => s !== sql);
+    return this.memento.update(SAVED_KEY_PREFIX + dbId, list);
+  }
+  isSaved(dbId: string, sql: string): boolean {
+    return this.getSaved(dbId).includes(sql.trim());
+  }
 }
 
 interface SqlEditorState {
   dbs: { id: string; name: string }[];
   dbId: string | null;
   sql: string;
-  result: { columns: string[]; rows: Record<string, unknown>[]; executionTime: number; affectedRows?: number } | null;
-  error: string | null;
+  results: { sql: string; columns: string[]; rows: Record<string, unknown>[]; executionTime: number; affectedRows?: number; error?: string }[];
+  activeResult: number;
   status: string;
   history: string[];
+  saved: string[];
   historyOpen: boolean;
 }
 
@@ -890,10 +1008,11 @@ export class SqlEditorPanel {
       dbs,
       dbId,
       sql: '',
-      result: null,
-      error: null,
+      results: [],
+      activeResult: 0,
       status: '',
       history: dbId ? this.history.get(dbId) : [],
+      saved: dbId ? this.history.getSaved(dbId) : [],
       historyOpen: false,
     };
     panel.onDidDispose(() => {
@@ -907,21 +1026,24 @@ export class SqlEditorPanel {
     this.state.dbs = dbs;
     if (preferredDbId && dbs.some(d => d.id === preferredDbId)) {
       this.state.dbId = preferredDbId;
-      this.state.history = this.history.get(preferredDbId);
     } else if (this.state.dbId && !dbs.some(d => d.id === this.state.dbId)) {
       this.state.dbId = dbs[0]?.id ?? null;
-      this.state.history = this.state.dbId ? this.history.get(this.state.dbId) : [];
     }
+    this.refreshLists();
     this.render();
+  }
+
+  private refreshLists() {
+    this.state.history = this.state.dbId ? this.history.get(this.state.dbId) : [];
+    this.state.saved = this.state.dbId ? this.history.getSaved(this.state.dbId) : [];
   }
 
   private async onMessage(msg: { type: string; [k: string]: unknown }) {
     switch (msg.type) {
       case 'setDb':
         this.state.dbId = String(msg.dbId ?? '') || null;
-        this.state.history = this.state.dbId ? this.history.get(this.state.dbId) : [];
-        this.state.result = null;
-        this.state.error = null;
+        this.refreshLists();
+        this.state.results = [];
         this.state.status = '';
         this.render();
         break;
@@ -951,57 +1073,79 @@ export class SqlEditorPanel {
         this.state.historyOpen = !this.state.historyOpen;
         this.render();
         break;
+      case 'saveQuery':
+        if (this.state.dbId && msg.sql) {
+          await this.history.addSaved(this.state.dbId, String(msg.sql));
+          this.refreshLists();
+          this.render();
+        }
+        break;
+      case 'unsaveQuery':
+        if (this.state.dbId && msg.sql) {
+          await this.history.removeSaved(this.state.dbId, String(msg.sql));
+          this.refreshLists();
+          this.render();
+        }
+        break;
+      case 'selectResult':
+        this.state.activeResult = Math.max(0, Math.min(Number(msg.index ?? 0), this.state.results.length - 1));
+        this.render();
+        break;
+      case 'closeResult':
+        this.state.results.splice(Number(msg.index ?? 0), 1);
+        if (this.state.activeResult >= this.state.results.length) {
+          this.state.activeResult = Math.max(0, this.state.results.length - 1);
+        }
+        this.render();
+        break;
     }
+  }
+
+  private pushResult(r: SqlEditorState['results'][number]) {
+    this.state.results.push(r);
+    if (this.state.results.length > 8) this.state.results.shift();
+    this.state.activeResult = this.state.results.length - 1;
   }
 
   private async runQuery(asBatch: boolean) {
     if (!this.state.dbId) {
-      this.state.error = 'No database selected.';
+      this.state.status = 'No database selected.';
       this.render();
       return;
     }
     const sql = this.state.sql.trim();
     if (!sql) {
-      this.state.error = 'Nothing to run.';
+      this.state.status = 'Nothing to run.';
       this.render();
       return;
     }
     this.state.status = 'Running…';
-    this.state.error = null;
     this.render();
 
     try {
       if (asBatch) {
         const statements = splitSql(sql);
         if (statements.length === 0) {
-          this.state.error = 'No statements detected.';
-          this.state.status = '';
+          this.state.status = 'No statements detected.';
           this.render();
           return;
         }
         const result = await this.client.batch(this.state.dbId, statements);
         if (result.error) {
-          this.state.error = result.error;
-          this.state.result = null;
+          this.pushResult({ sql, columns: [], rows: [], executionTime: result.executionTime, error: result.error });
           this.state.status = `Failed in ${result.executionTime}ms (rolled back)`;
         } else {
-          this.state.result = { columns: [], rows: [], executionTime: result.executionTime, affectedRows: result.executed ?? 0 };
+          this.pushResult({ sql, columns: [], rows: [], executionTime: result.executionTime, affectedRows: result.executed ?? 0 });
           this.state.status = `OK · ${result.executed} statement${result.executed === 1 ? '' : 's'} in ${result.executionTime}ms`;
         }
       } else {
         const result = await this.client.query(this.state.dbId, sql);
         if (result.error) {
-          this.state.error = result.error;
-          this.state.result = null;
+          this.pushResult({ sql, columns: [], rows: [], executionTime: result.executionTime, error: result.error });
           this.state.status = `Failed in ${result.executionTime}ms`;
         } else {
           const cols = result.data.length > 0 ? Object.keys(result.data[0]) : [];
-          this.state.result = {
-            columns: cols,
-            rows: result.data,
-            executionTime: result.executionTime,
-            affectedRows: result.affectedRows,
-          };
+          this.pushResult({ sql, columns: cols, rows: result.data, executionTime: result.executionTime, affectedRows: result.affectedRows });
           this.state.status = result.data.length > 0
             ? `${result.rowCount} row${result.rowCount === 1 ? '' : 's'} in ${result.executionTime}ms`
             : `OK · ${result.affectedRows ?? 0} affected in ${result.executionTime}ms`;
@@ -1009,10 +1153,9 @@ export class SqlEditorPanel {
       }
 
       await this.history.push(this.state.dbId, sql);
-      this.state.history = this.history.get(this.state.dbId);
+      this.refreshLists();
     } catch (e) {
-      this.state.error = (e as Error).message;
-      this.state.result = null;
+      this.pushResult({ sql, columns: [], rows: [], executionTime: 0, error: (e as Error).message });
       this.state.status = '';
     }
     this.render();
@@ -1030,15 +1173,36 @@ export class SqlEditorPanel {
       `<option value="${escapeAttr(d.id)}" ${d.id === this.state.dbId ? 'selected' : ''}>${escapeHtml(d.name)}</option>`,
     ).join('');
 
-    const resultPanel = this.state.error
-      ? `<div class="error">${escapeHtml(this.state.error)}</div>`
-      : this.state.result
-        ? this.renderResult(this.state.result)
-        : `<div class="meta">Run a query to see results.</div>`;
+    const resultTabs = this.state.results.map((r, i) => {
+      const label = truncate(r.sql.replace(/\s+/g, ' '), 40);
+      const cls = i === this.state.activeResult ? 'tab active' : 'tab';
+      return `<div class="${cls}" data-tab="${i}" title="${escapeAttr(r.sql)}">
+        <span>${escapeHtml(label)}</span>
+        <button class="tab-close" data-tab-close="${i}" title="Close">✕</button>
+      </div>`;
+    }).join('');
+
+    const active = this.state.results[this.state.activeResult];
+    const resultPanel = !active
+      ? `<div class="meta" style="padding:12px">Run a query to see results.</div>`
+      : active.error
+        ? `<div class="error">${escapeHtml(active.error)}</div>`
+        : this.renderResult(active);
+
+    const savedSet = new Set(this.state.saved);
+    const savedItems = this.state.saved.length === 0
+      ? `<div class="meta" style="padding:8px">No saved queries.</div>`
+      : this.state.saved.map((h, i) => `<div class="hist-item saved" title="${escapeAttr(h)}">
+          <span class="hist-text" data-saved-load="${i}">${escapeHtml(truncate(h.replace(/\s+/g, ' '), 80))}</span>
+          <button class="pin-btn active" data-saved-remove="${i}" title="Unsave">★</button>
+        </div>`).join('');
 
     const historyItems = this.state.history.length === 0
       ? `<div class="meta" style="padding:8px">No history yet.</div>`
-      : this.state.history.map((h, i) => `<div class="hist-item" data-hist="${i}" title="${escapeAttr(h)}">${escapeHtml(truncate(h.replace(/\s+/g, ' '), 90))}</div>`).join('');
+      : this.state.history.map((h, i) => `<div class="hist-item" title="${escapeAttr(h)}">
+          <span class="hist-text" data-hist="${i}">${escapeHtml(truncate(h.replace(/\s+/g, ' '), 80))}</span>
+          <button class="pin-btn ${savedSet.has(h) ? 'active' : ''}" data-hist-pin="${i}" title="${savedSet.has(h) ? 'Unsave' : 'Save'}">${savedSet.has(h) ? '★' : '☆'}</button>
+        </div>`).join('');
 
     this.panel.webview.html = /* html */ `
 <!DOCTYPE html>
@@ -1071,8 +1235,20 @@ export class SqlEditorPanel {
     .history-head { padding: 8px 12px; border-bottom: 1px solid var(--vscode-panel-border); display: flex; align-items: center; gap: 8px; }
     .history-head h3 { margin: 0; font-size: 12px; font-weight: 600; }
     .history-list { flex: 1; overflow: auto; }
-    .hist-item { padding: 6px 12px; font-family: var(--vscode-editor-font-family); font-size: 11px; border-bottom: 1px solid var(--vscode-panel-border); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hist-item { padding: 6px 12px; font-family: var(--vscode-editor-font-family); font-size: 11px; border-bottom: 1px solid var(--vscode-panel-border); white-space: nowrap; display: flex; align-items: center; gap: 6px; }
     .hist-item:hover { background: var(--vscode-list-hoverBackground); }
+    .hist-item .hist-text { flex: 1; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+    .pin-btn { background: transparent; color: var(--vscode-descriptionForeground); border: 0; padding: 0 4px; cursor: pointer; font-size: 13px; }
+    .pin-btn:hover { color: var(--vscode-foreground); }
+    .pin-btn.active { color: var(--vscode-charts-yellow, #d4a017); }
+    .saved-list { border-bottom: 1px solid var(--vscode-panel-border); }
+    .section-label { padding: 6px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--vscode-descriptionForeground); }
+    .tabs { display: flex; gap: 2px; padding: 4px 12px 0; border-bottom: 1px solid var(--vscode-panel-border); overflow-x: auto; }
+    .tab { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border: 1px solid var(--vscode-panel-border); border-bottom: none; border-top-left-radius: 4px; border-top-right-radius: 4px; cursor: pointer; font-size: 11px; max-width: 220px; }
+    .tab.active { background: var(--vscode-editorWidget-background); }
+    .tab span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+    .tab-close { background: transparent; border: 0; color: var(--vscode-descriptionForeground); padding: 0 4px; cursor: pointer; }
+    .tab-close:hover { color: var(--vscode-errorForeground); }
     kbd { font-family: var(--vscode-editor-font-family); font-size: 11px; background: var(--vscode-keybindingLabel-background, var(--vscode-editorWidget-background)); border: 1px solid var(--vscode-panel-border); border-radius: 2px; padding: 0 4px; }
   </style>
 </head>
@@ -1089,14 +1265,17 @@ export class SqlEditorPanel {
   <div class="main">
     <div class="editor-pane">
       <div class="editor-area"><textarea id="sql" placeholder="-- Type SQL here. ⌘/Ctrl+Enter to run.">${escapeHtml(this.state.sql)}</textarea></div>
+      ${this.state.results.length > 0 ? `<div class="tabs">${resultTabs}</div>` : ''}
       <div class="results">${resultPanel}</div>
     </div>
     <div class="history-pane ${this.state.historyOpen ? '' : 'hidden'}">
       <div class="history-head">
-        <h3>History</h3>
+        <h3>Saved &amp; History</h3>
         <span class="spacer"></span>
         <button id="clearHistory" class="secondary" ${this.state.history.length === 0 ? 'disabled' : ''}>Clear</button>
       </div>
+      ${this.state.saved.length > 0 ? `<div class="section-label">Saved</div><div class="saved-list">${savedItems}</div>` : ''}
+      <div class="section-label">Recent</div>
       <div class="history-list">${historyItems}</div>
     </div>
   </div>
@@ -1117,11 +1296,38 @@ export class SqlEditorPanel {
     $('db').addEventListener('change', e => vscode.postMessage({ type: 'setDb', dbId: e.target.value }));
     $('toggleHistory').onclick = () => vscode.postMessage({ type: 'toggleHistory' });
     if ($('clearHistory')) $('clearHistory').onclick = () => vscode.postMessage({ type: 'clearHistory' });
-    document.querySelectorAll('.hist-item').forEach(el => {
-      el.addEventListener('click', () => {
-        const idx = Number(el.dataset.hist);
-        const all = ${JSON.stringify(this.state.history)};
-        vscode.postMessage({ type: 'loadHistory', sql: all[idx] });
+    const HIST = ${JSON.stringify(this.state.history)};
+    const SAVED = ${JSON.stringify(this.state.saved)};
+    document.querySelectorAll('[data-hist]').forEach(el => {
+      el.addEventListener('click', () => vscode.postMessage({ type: 'loadHistory', sql: HIST[Number(el.dataset.hist)] }));
+    });
+    document.querySelectorAll('[data-hist-pin]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const sql = HIST[Number(btn.dataset.histPin)];
+        const isActive = btn.classList.contains('active');
+        vscode.postMessage({ type: isActive ? 'unsaveQuery' : 'saveQuery', sql });
+      });
+    });
+    document.querySelectorAll('[data-saved-load]').forEach(el => {
+      el.addEventListener('click', () => vscode.postMessage({ type: 'loadHistory', sql: SAVED[Number(el.dataset.savedLoad)] }));
+    });
+    document.querySelectorAll('[data-saved-remove]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        vscode.postMessage({ type: 'unsaveQuery', sql: SAVED[Number(btn.dataset.savedRemove)] });
+      });
+    });
+    document.querySelectorAll('[data-tab]').forEach(el => {
+      el.addEventListener('click', e => {
+        if (e.target.classList.contains('tab-close')) return;
+        vscode.postMessage({ type: 'selectResult', index: Number(el.dataset.tab) });
+      });
+    });
+    document.querySelectorAll('[data-tab-close]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        vscode.postMessage({ type: 'closeResult', index: Number(btn.dataset.tabClose) });
       });
     });
     sqlEl.focus();
@@ -1130,9 +1336,9 @@ export class SqlEditorPanel {
 </html>`;
   }
 
-  private renderResult(r: { columns: string[]; rows: Record<string, unknown>[]; executionTime: number; affectedRows?: number }): string {
+  private renderResult(r: SqlEditorState['results'][number]): string {
     if (r.rows.length === 0) {
-      return `<div class="meta" style="padding:12px">No rows returned. ${r.affectedRows !== undefined ? `${r.affectedRows} affected.` : ''}</div>`;
+      return `<div class="meta" style="padding:12px">No rows returned. ${r.affectedRows !== undefined ? `${r.affectedRows} affected.` : ''} (${r.executionTime}ms)</div>`;
     }
     const head = r.columns.map(c => `<th>${escapeHtml(c)}</th>`).join('');
     const body = r.rows.map(row => {

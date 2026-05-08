@@ -2,7 +2,7 @@
   "name": "sqflite-dev-vscode",
   "displayName": "FLUTTER SQFLITE DEV",
   "description": "Browse, query, and inspect SQLite databases exposed by the sqflite_dev Dart/Flutter package — without leaving VS Code.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "subairanchukandan",
   "icon": "media/icon.png",
   "engines": {
@@ -50,6 +50,20 @@
           "type": "number",
           "default": 0,
           "description": "If > 0, auto-refresh the database tree every N seconds. 0 disables polling."
+        },
+        "sqfliteDev.servers": {
+          "type": "array",
+          "default": [],
+          "description": "List of named workbench servers. When set, overrides the host/port settings. Use the 'Switch Server' command to change the active one.",
+          "items": {
+            "type": "object",
+            "required": ["host", "port"],
+            "properties": {
+              "name": { "type": "string", "description": "Display name (defaults to host:port)" },
+              "host": { "type": "string", "default": "localhost" },
+              "port": { "type": "number", "default": 8080 }
+            }
+          }
         }
       }
     },
@@ -149,6 +163,16 @@
         "category": "sqflite_dev"
       },
       {
+        "command": "sqfliteDev.analyzeDb",
+        "title": "Analyze Database",
+        "category": "sqflite_dev"
+      },
+      {
+        "command": "sqfliteDev.integrityCheck",
+        "title": "Integrity Check",
+        "category": "sqflite_dev"
+      },
+      {
         "command": "sqfliteDev.filterTables",
         "title": "Filter Tables…",
         "category": "sqflite_dev",
@@ -165,6 +189,12 @@
         "title": "Open SQL Editor",
         "category": "sqflite_dev",
         "icon": "$(terminal)"
+      },
+      {
+        "command": "sqfliteDev.switchServer",
+        "title": "Switch Server…",
+        "category": "sqflite_dev",
+        "icon": "$(server)"
       },
       {
         "command": "sqfliteDev.createTableTemplate",
@@ -228,6 +258,11 @@
           "group": "navigation@4"
         },
         {
+          "command": "sqfliteDev.switchServer",
+          "when": "view == sqfliteDev.databases",
+          "group": "navigation@5"
+        },
+        {
           "command": "sqfliteDev.clearTableFilter",
           "when": "view == sqfliteDev.databases",
           "group": "1_filter@1"
@@ -263,6 +298,16 @@
           "command": "sqfliteDev.createTableTemplate",
           "when": "view == sqfliteDev.databases && viewItem == database",
           "group": "2_create@1"
+        },
+        {
+          "command": "sqfliteDev.analyzeDb",
+          "when": "view == sqfliteDev.databases && viewItem == database",
+          "group": "3_maint@1"
+        },
+        {
+          "command": "sqfliteDev.integrityCheck",
+          "when": "view == sqfliteDev.databases && viewItem == database",
+          "group": "3_maint@2"
         },
         {
           "command": "sqfliteDev.vacuumDb",

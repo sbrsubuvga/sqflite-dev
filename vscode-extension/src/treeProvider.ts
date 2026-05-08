@@ -57,6 +57,8 @@ export class WorkbenchTreeProvider implements vscode.TreeDataProvider<Node> {
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   private connected = false;
+  private connecting = false;
+  private lastError: string | null = null;
   private databases: DatabaseSummary[] = [];
   private readonly schemaCache = new Map<string, SchemaResult>();
   private readonly rowCountCache = new Map<string, number>();
@@ -66,6 +68,14 @@ export class WorkbenchTreeProvider implements vscode.TreeDataProvider<Node> {
 
   isConnected() {
     return this.connected;
+  }
+
+  isConnecting() {
+    return this.connecting;
+  }
+
+  getLastError(): string | null {
+    return this.lastError;
   }
 
   getDatabases(): readonly DatabaseSummary[] {
@@ -81,17 +91,25 @@ export class WorkbenchTreeProvider implements vscode.TreeDataProvider<Node> {
     this._onDidChangeTreeData.fire();
   }
 
-  async refresh(): Promise<void> {
+  async refresh(): Promise<{ wasConnected: boolean; nowConnected: boolean }> {
+    const wasConnected = this.connected;
     this.schemaCache.clear();
     this.rowCountCache.clear();
+    this.connecting = true;
+    this._onDidChangeTreeData.fire();
     try {
       this.databases = await this.client.listDatabases();
       this.connected = true;
-    } catch {
+      this.lastError = null;
+    } catch (e) {
       this.connected = false;
       this.databases = [];
+      this.lastError = (e as Error).message;
+    } finally {
+      this.connecting = false;
+      this._onDidChangeTreeData.fire();
     }
-    this._onDidChangeTreeData.fire();
+    return { wasConnected, nowConnected: this.connected };
   }
 
   getTreeItem(element: Node): vscode.TreeItem {
@@ -100,6 +118,9 @@ export class WorkbenchTreeProvider implements vscode.TreeDataProvider<Node> {
 
   async getChildren(element?: Node): Promise<Node[]> {
     if (!element) {
+      if (this.connecting && this.databases.length === 0) {
+        return [new MessageNode('Connecting…', 'sync~spin')];
+      }
       if (!this.connected) {
         return [];
       }
