@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
+  <ellipse cx="8" cy="3" rx="6" ry="2" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  <path d="M2 3v4c0 1.1 2.7 2 6 2s6-.9 6-2V3" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  <path d="M2 7v4c0 1.1 2.7 2 6 2s6-.9 6-2V7" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  <path d="M2 11v2c0 1.1 2.7 2 6 2s6-.9 6-2v-2" fill="none" stroke="currentColor" stroke-width="1.2"/>
+</svg>

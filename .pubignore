@@ -15,3 +15,6 @@ example/test/
 *.png
 .DS_Store
 
+# VS Code extension lives in this repo but is not part of the Dart package
+vscode-extension/
+

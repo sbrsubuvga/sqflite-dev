@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <rect width="256" height="256" rx="48" fill="#0F1F3D"/>
+
+  <!-- Flutter logo (left) -->
+  <g transform="translate(28 78) scale(4.0)">
+    <path d="M14.314 0L2.3 12 6 15.7 21.684.013z" fill="#01579B"/>
+    <path d="M14.328 11.072L7.857 17.53l6.47 6.47H21.7l-6.46-6.468 6.46-6.46z" fill="#42A5F5"/>
+    <path d="M14.328 17.532L11.092 20.768l3.236 3.232 3.234-3.232z" fill="#0277BD"/>
+  </g>
+
+  <!-- Database cylinder (right) -->
+  <g transform="translate(148 78)">
+    <path d="M0 12 V 84 C 0 90.6 17.9 96 40 96 S 80 90.6 80 84 V 12" fill="#54C5F8"/>
+    <ellipse cx="40" cy="12" rx="40" ry="12" fill="#7FD7FA"/>
+    <ellipse cx="40" cy="12" rx="40" ry="12" fill="none" stroke="#0F1F3D" stroke-width="2.5"/>
+    <path d="M0 36 C 0 42.6 17.9 48 40 48 S 80 42.6 80 36" stroke="#0F1F3D" stroke-width="2.5" fill="none"/>
+    <path d="M0 60 C 0 66.6 17.9 72 40 72 S 80 66.6 80 60" stroke="#0F1F3D" stroke-width="2.5" fill="none"/>
+  </g>
+</svg>

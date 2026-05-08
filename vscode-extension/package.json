@@ -1,0 +1,350 @@
+{
+  "name": "sqflite-dev-vscode",
+  "displayName": "FLUTTER SQFLITE DEV",
+  "description": "Browse, query, and inspect SQLite databases exposed by the sqflite_dev Dart/Flutter package — without leaving VS Code.",
+  "version": "0.1.0",
+  "publisher": "subairanchukandan",
+  "icon": "media/icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Visualization"
+  ],
+  "keywords": [
+    "sqlite",
+    "sqflite",
+    "flutter",
+    "dart",
+    "database"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sbrsubuvga/sqflite-dev"
+  },
+  "bugs": {
+    "url": "https://github.com/sbrsubuvga/sqflite-dev/issues"
+  },
+  "homepage": "https://github.com/sbrsubuvga/sqflite-dev/tree/main/vscode-extension",
+  "license": "MIT",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "sqflite_dev Workbench",
+      "properties": {
+        "sqfliteDev.host": {
+          "type": "string",
+          "default": "localhost",
+          "description": "Host where the sqflite_dev workbench server is running."
+        },
+        "sqfliteDev.port": {
+          "type": "number",
+          "default": 8080,
+          "description": "Port the sqflite_dev workbench server listens on."
+        },
+        "sqfliteDev.autoRefreshSeconds": {
+          "type": "number",
+          "default": 0,
+          "description": "If > 0, auto-refresh the database tree every N seconds. 0 disables polling."
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sqfliteDev",
+          "title": "sqflite_dev",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "sqfliteDev": [
+        {
+          "id": "sqfliteDev.databases",
+          "name": "Databases",
+          "icon": "media/icon.svg",
+          "contextualTitle": "sqflite_dev"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "sqfliteDev.databases",
+        "contents": "No sqflite_dev workbench server detected at $(zap) `${config:sqfliteDev.host}:${config:sqfliteDev.port}`.\n\nMake sure your Flutter/Dart app is running with `db.enableWorkbench()` enabled.\n\n[Connect](command:sqfliteDev.connect)\n[Open Settings](command:sqfliteDev.openSettings)"
+      }
+    ],
+    "commands": [
+      {
+        "command": "sqfliteDev.connect",
+        "title": "Connect / Refresh",
+        "category": "sqflite_dev",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "sqfliteDev.openWorkbench",
+        "title": "Open Workbench in Editor",
+        "category": "sqflite_dev",
+        "icon": "$(window)"
+      },
+      {
+        "command": "sqfliteDev.openInBrowser",
+        "title": "Open Workbench in Browser",
+        "category": "sqflite_dev",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "sqfliteDev.openTable",
+        "title": "Open Table",
+        "category": "sqflite_dev",
+        "icon": "$(table)"
+      },
+      {
+        "command": "sqfliteDev.runSqlFile",
+        "title": "Run SQL on sqflite_dev",
+        "category": "sqflite_dev",
+        "icon": "$(play)"
+      },
+      {
+        "command": "sqfliteDev.runSelection",
+        "title": "Run Selected SQL on sqflite_dev",
+        "category": "sqflite_dev",
+        "icon": "$(play)"
+      },
+      {
+        "command": "sqfliteDev.runSqlFileTransaction",
+        "title": "Run SQL as Transaction on sqflite_dev",
+        "category": "sqflite_dev",
+        "icon": "$(run-all)"
+      },
+      {
+        "command": "sqfliteDev.copyDbPath",
+        "title": "Copy Database Path",
+        "category": "sqflite_dev"
+      },
+      {
+        "command": "sqfliteDev.dropTable",
+        "title": "Drop Table…",
+        "category": "sqflite_dev",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "sqfliteDev.truncateTable",
+        "title": "Truncate Table…",
+        "category": "sqflite_dev"
+      },
+      {
+        "command": "sqfliteDev.renameTable",
+        "title": "Rename Table…",
+        "category": "sqflite_dev",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "sqfliteDev.vacuumDb",
+        "title": "Vacuum Database…",
+        "category": "sqflite_dev"
+      },
+      {
+        "command": "sqfliteDev.filterTables",
+        "title": "Filter Tables…",
+        "category": "sqflite_dev",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "sqfliteDev.clearTableFilter",
+        "title": "Clear Table Filter",
+        "category": "sqflite_dev",
+        "icon": "$(filter-filled)"
+      },
+      {
+        "command": "sqfliteDev.openSqlEditor",
+        "title": "Open SQL Editor",
+        "category": "sqflite_dev",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "sqfliteDev.createTableTemplate",
+        "title": "New Table…",
+        "category": "sqflite_dev",
+        "icon": "$(add)"
+      },
+      {
+        "command": "sqfliteDev.createIndexTemplate",
+        "title": "New Index…",
+        "category": "sqflite_dev"
+      },
+      {
+        "command": "sqfliteDev.openSettings",
+        "title": "Open Settings",
+        "category": "sqflite_dev",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "sqfliteDev.showDbInfo",
+        "title": "Show Database Info",
+        "category": "sqflite_dev",
+        "icon": "$(info)"
+      },
+      {
+        "command": "sqfliteDev.copyCreate",
+        "title": "Copy CREATE Statement",
+        "category": "sqflite_dev"
+      },
+      {
+        "command": "sqfliteDev.copySelect",
+        "title": "Copy SELECT * Statement",
+        "category": "sqflite_dev"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "sqfliteDev.filterTables",
+          "when": "view == sqfliteDev.databases",
+          "group": "navigation@0"
+        },
+        {
+          "command": "sqfliteDev.connect",
+          "when": "view == sqfliteDev.databases",
+          "group": "navigation@1"
+        },
+        {
+          "command": "sqfliteDev.openWorkbench",
+          "when": "view == sqfliteDev.databases",
+          "group": "navigation@2"
+        },
+        {
+          "command": "sqfliteDev.openInBrowser",
+          "when": "view == sqfliteDev.databases",
+          "group": "navigation@3"
+        },
+        {
+          "command": "sqfliteDev.openSqlEditor",
+          "when": "view == sqfliteDev.databases",
+          "group": "navigation@4"
+        },
+        {
+          "command": "sqfliteDev.clearTableFilter",
+          "when": "view == sqfliteDev.databases",
+          "group": "1_filter@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "sqfliteDev.openTable",
+          "when": "view == sqfliteDev.databases && viewItem == table",
+          "group": "inline"
+        },
+        {
+          "command": "sqfliteDev.showDbInfo",
+          "when": "view == sqfliteDev.databases && viewItem == database",
+          "group": "inline"
+        },
+        {
+          "command": "sqfliteDev.showDbInfo",
+          "when": "view == sqfliteDev.databases && viewItem == database",
+          "group": "1_info@1"
+        },
+        {
+          "command": "sqfliteDev.copyDbPath",
+          "when": "view == sqfliteDev.databases && viewItem == database",
+          "group": "1_info@2"
+        },
+        {
+          "command": "sqfliteDev.openSqlEditor",
+          "when": "view == sqfliteDev.databases && viewItem == database",
+          "group": "1_info@3"
+        },
+        {
+          "command": "sqfliteDev.createTableTemplate",
+          "when": "view == sqfliteDev.databases && viewItem == database",
+          "group": "2_create@1"
+        },
+        {
+          "command": "sqfliteDev.vacuumDb",
+          "when": "view == sqfliteDev.databases && viewItem == database",
+          "group": "9_danger@1"
+        },
+        {
+          "command": "sqfliteDev.copyCreate",
+          "when": "view == sqfliteDev.databases && viewItem == table",
+          "group": "1_copy@1"
+        },
+        {
+          "command": "sqfliteDev.copySelect",
+          "when": "view == sqfliteDev.databases && viewItem == table",
+          "group": "1_copy@2"
+        },
+        {
+          "command": "sqfliteDev.createIndexTemplate",
+          "when": "view == sqfliteDev.databases && viewItem == table",
+          "group": "2_create@1"
+        },
+        {
+          "command": "sqfliteDev.renameTable",
+          "when": "view == sqfliteDev.databases && viewItem == table",
+          "group": "8_alter@1"
+        },
+        {
+          "command": "sqfliteDev.truncateTable",
+          "when": "view == sqfliteDev.databases && viewItem == table",
+          "group": "9_danger@1"
+        },
+        {
+          "command": "sqfliteDev.dropTable",
+          "when": "view == sqfliteDev.databases && viewItem == table",
+          "group": "9_danger@2"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "sqfliteDev.runSelection",
+          "when": "editorHasSelection && resourceLangId == sql",
+          "group": "sqfliteDev@1"
+        },
+        {
+          "command": "sqfliteDev.runSqlFile",
+          "when": "resourceLangId == sql",
+          "group": "sqfliteDev@2"
+        },
+        {
+          "command": "sqfliteDev.runSqlFileTransaction",
+          "when": "resourceLangId == sql",
+          "group": "sqfliteDev@3"
+        }
+      ],
+      "editor/title/run": [
+        {
+          "command": "sqfliteDev.runSqlFile",
+          "when": "resourceLangId == sql",
+          "group": "sqfliteDev"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "sqfliteDev.runSelection",
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "when": "editorTextFocus && editorHasSelection && resourceLangId == sql"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "2.22.0",
+    "typescript": "^5.4.0"
+  }
+}
